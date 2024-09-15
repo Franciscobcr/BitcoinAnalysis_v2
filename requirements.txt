@@ -1,0 +1,10 @@
+requests
+pandas
+datetime
+ccxt 
+ta 
+numpy 
+fredapi 
+pytz 
+yfinance 
+bs4
