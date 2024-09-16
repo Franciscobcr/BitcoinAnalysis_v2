@@ -18,8 +18,9 @@ load_dotenv()
 class derivatives_data:
     
     def __init__(self):
-        self.options_volume= self.options_volume().analysis
-        self.coinglass_key=""
+        # Instancia a classe options_volume em vez de chamar diretamente a análise
+        self.options_volume = self.options_volume()
+        self.coinglass_key = ""
 
     def convert_to_brt(self, timestamp):
         dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
@@ -70,7 +71,7 @@ class derivatives_data:
                 return analysis
             else:
                 return "Nenhum dado de volume de negociação foi retornado para análise."
-
+            
     class cvd_data:
         def fetch_trades(self, pair='XXBTZUSD', interval=30, lookback_days=14):
             endpoint = 'https://api.kraken.com/0/public/OHLC'

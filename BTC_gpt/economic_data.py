@@ -1,10 +1,17 @@
 import os
 from datetime import datetime, timedelta
 import yfinance as yf
-import Fred
+from fredapi import Fred 
+import ta 
 import requests
 import pandas as pd
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+from newsapi import NewsApiClient
 from dotenv import load_dotenv
+
+
 
 load_dotenv()
 
@@ -12,7 +19,7 @@ class economic_data:
     
     def __init__(self):
         self.fred = Fred(api_key=os.getenv('API_fred'))
-        self.economic_news = self.economic_news().analysis
+        self.economic_news = self.economic_news()
         
     def cpi_data(self):
         #(indicador: 'CPIAUCSL')
@@ -40,7 +47,8 @@ class economic_data:
 
         return pib_ultimos_dois
     
-    def indice_data(data, nome_indice):
+
+    def indice_data(self, data, nome_indice):
         # Coletar os dados mais recentes
         ultimo_dado = data.tail(1)
 
@@ -82,8 +90,25 @@ class economic_data:
         """
         return analise
 
+    def fetch_data(self, ticker):
+        # Baixar os dados de mercado do Yahoo Finance para o último mês com intervalos de 30 minutos
+        data = yf.download(ticker, period="1mo", interval="30m")
+
+        # Calcular os indicadores técnicos
+        data['MA20'] = data['Close'].rolling(window=20).mean()
+        data['RSI'] = ta.momentum.RSIIndicator(data['Close'], window=14).rsi()
+        bb = ta.volatility.BollingerBands(data['Close'], window=20, window_dev=2)
+        data['BB_Upper'] = bb.bollinger_hband()
+        data['BB_Lower'] = bb.bollinger_lband()
+
+        return data.dropna()  # Remove linhas com dados faltantes
+
     def analyze_indice(self):
-            # Análise para o S&P 500
+        # Capturar os dados reais do S&P 500 e Nasdaq
+        analise_sp500 = self.fetch_data("^GSPC")  # S&P 500
+        analise_nasdaq = self.fetch_data("^IXIC")  # Nasdaq
+
+        # Análise para o S&P 500
         analise_sp500_texto = self.indice_data(analise_sp500, "S&P 500")
 
         # Análise para o Nasdaq
@@ -91,39 +116,66 @@ class economic_data:
 
         # Exibir as análises
         print(f"Análise S&P 500: {analise_sp500_texto} \nAnálise Nasdaq: {analise_nasdaq_texto}")
-        
+
     class economic_news:
         def __init__(self):
             self.api_news = os.getenv('API_news')
-        
-        def get_news(self,query):
-            url = f"https://newsapi.org/v2/everything?q={query}&from=2024-08-14&sortBy=publishedAt&apiKey={self.api_news}"
-            try:
-                response = requests.get(url)
-                response.raise_for_status() 
-                data = response.json()
+            # Inicializando o cliente da NewsAPI
+            self.newsapi = NewsApiClient(api_key=self.api_news)
+            # Carregar o modelo BERT para análise de sentimentos
+            self.tokenizer = AutoTokenizer.from_pretrained("nlptown/bert-base-multilingual-uncased-sentiment")
+            self.model = AutoModelForSequenceClassification.from_pretrained("nlptown/bert-base-multilingual-uncased-sentiment")
+            self.sentiment_pipeline = pipeline("sentiment-analysis", model=self.model, tokenizer=self.tokenizer)
 
-                if data["status"] == "ok" and data["totalResults"] > 0:
-                    return data["articles"]
-                else:
-                    return []
+        def get_most_relevant_news(self, query, from_date, to_date, page_size=5):
+            # Fazendo a consulta das notícias com o parâmetro de relevância
+            all_articles = self.newsapi.get_everything(
+                q=query,
+                from_param=from_date,
+                to=to_date,
+                language='en',
+                sort_by='relevancy',
+                page_size=page_size
+            )
+            return all_articles['articles']
 
-            except requests.exceptions.RequestException as e:
-                return f"Erro ao buscar notícias: {e}"
-
-        def create_news_df(self, subject):
-            news_list = self.get_news(subject)
-            
+        def create_news_df(self, news_list):
             if len(news_list) > 0:
                 df = pd.DataFrame(news_list)
-                df = df[['source', 'title', 'description', 'publishedAt']] 
-                df['source'] = df['source'].apply(lambda x: x['name']) 
+                df = df[['source', 'title', 'description', 'publishedAt', 'url']]  # Inclui o link para a notícia
+                df['source'] = df['source'].apply(lambda x: x['name'])  # Extraindo o nome da fonte
+                df['publishedAt'] = pd.to_datetime(df['publishedAt'])  # Convertendo para datetime
                 return df
             else:
-                return pd.DataFrame() 
-            
-        def analyze_news(self):
-            pass
+                return pd.DataFrame()  # Retorna DataFrame vazio se não houver notícias
+
+        def analyze_sentiment(self, text):
+            # Usa o BERT para analisar o sentimento do texto
+            return self.sentiment_pipeline(text)[0]  # Retorna a análise do sentimento
+
+        def get_top_news_of_month_with_sentiment(self, subject):
+            # Definir o período do último mês
+            today = datetime.today()
+            one_month_ago = today - timedelta(weeks=4)
+
+            # Converter as datas para o formato YYYY-MM-DD
+            from_date = one_month_ago.strftime('%Y-%m-%d')
+            to_date = today.strftime('%Y-%m-%d')
+
+            # Obter as 5 notícias mais relevantes do último mês
+            news_list = self.get_most_relevant_news(subject, from_date, to_date, page_size=5)
+            news_df = self.create_news_df(news_list)
+
+            # Aplicar a análise de sentimento usando BERT para cada notícia
+            if not news_df.empty:
+                news_df['sentiment'] = news_df.apply(
+                    lambda row: self.analyze_sentiment((row['title'] or '') + ' ' + (row['description'] or '')), axis=1
+                )
+                return news_df
+            else:
+                return pd.DataFrame()  
+
+        
         
     def gold_correlation(self, ticker='BTC-USD'):
         def get_data(ticker, start_date, end_date):
