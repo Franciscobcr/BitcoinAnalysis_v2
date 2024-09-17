@@ -1,137 +1,121 @@
 from derivatives2 import derivatives_data
 from onchain_data import OnChain
 from economic_data import economic_dt
+import requests
+from datetime import datetime, timedelta
 
+def get_bitcoin_price_and_variation():
+    # URL base da API do CoinGecko
+    base_url = "https://api.coingecko.com/api/v3"
 
-def run_all_analyses():
-    print("Funções da classe de dados derivativos.")
-    deriv_data = derivatives_data()
-
-    # Profundidade do mercado
-    print("\nAnálise da profundidade do mercado...")
-    market_depth_analysis = deriv_data.market_depth().analysis()
-    print(market_depth_analysis)
-
-    # Liquidações
-    print("\nAnálise de liquidações...")
-    liquidation_analysis = deriv_data.liquidations().analysis()
-    print(liquidation_analysis)
-
-    # Long/Short Ratio
-    print("\nAnálise de Long/Short Ratio...")
-    ls_ratio_analysis = deriv_data.ls_ratio().analysis()
-    print(ls_ratio_analysis)
-
-    # Funding rate vol
-    print("\nAnálise de volume de funding rate...")
-    fundingratevol_anl = deriv_data.fundingratevol().analysis()
-    print(fundingratevol_anl)
-
-    # Funding rate ohlc
-    print("\nAnálise de funding_rate_ohlc...")
-    funding_rate_ohlc_anl = deriv_data.funding_rate_ohlc().analysis()
-    print(funding_rate_ohlc_anl)
-
-    # oi_weight_ohlc
-    print("\nAnálise de oi_weight_ohlc")
-    oi_weight_ohlc_anl = deriv_data.oi_weight_ohlc().analysis()
-    print(oi_weight_ohlc_anl)
-
-    # oi_ohlc
-    print("\nAnálise de oi_ohlc")
-    oi_ohlc_anl = deriv_data.oi_ohlc().analysis()
-    print(oi_ohlc_anl)
-
-    # oi_ohlc history
-    print("\nAnálise de oi_ohlc history")
-    oi_ohlc_history_anl = deriv_data.oi_ohlc_history().analysis()
-    print(oi_ohlc_history_anl)
-
-    # Volume de opções
-    print("\nAnálise de Volume de opçoes")
-    options_vol = derivatives_data.options_volume()
-    options_vol_anl = options_vol.analysis()
-    print(options_vol_anl)
-
-    # CVD
-    print("\nAnálise de CVD")
-    cvd = derivatives_data.cvd_data()
-    cvd_anl = cvd.analysis()
-    print(cvd_anl)
-
-    # Volume change
-    print("\nAnálise de Volume change")
-    vol_change = derivatives_data.volume_change()
-    vol_change_anl = vol_change.analysis()
-    print(vol_change_anl)
-
-    # Skew
-    print("\nAnálise de Options volume")
-    skew = derivatives_data.skew()
-    skew_anl = skew.analysis()
-    print(skew_anl)
-
-    # iv
-    print("\nAnálise de IV")
-    iv = derivatives_data.iv()
-    iv_anl = iv.analysis()
-    print(iv_anl)
-
-    print('\nFunções da classe de dados on chain.')
+    # Endpoint para o preço atual do Bitcoin
+    price_url = f"{base_url}/simple/price?ids=bitcoin&vs_currencies=usd"
+    response = requests.get(price_url)
+    data = response.json()
     
-    # Volume onchain
-    print("\nAnálise de on_chain_volume")
+    # Preço atual do Bitcoin
+    current_price = data['bitcoin']['usd']
+    
+    # Função auxiliar para calcular a variação de preço
+    def get_variation(days):
+        date = (datetime.now() - timedelta(days=days)).strftime('%d-%m-%Y')
+        market_data_url = f"{base_url}/coins/bitcoin/history?date={date}"
+        response = requests.get(market_data_url)
+        historical_data = response.json()
+        historical_price = historical_data['market_data']['current_price']['usd']
+        variation = ((current_price - historical_price) / historical_price) * 100
+        return variation
+    
+    # Cálculo das variações
+    variation_30d = get_variation(30)
+    variation_14d = get_variation(14)
+    variation_7d = get_variation(7)
+
+    # Formatação e retorno do texto
+    return (
+        f"Preço atual do Bitcoin: ${current_price:.2f}\n"
+        f"Variação nos últimos 30 dias: {variation_30d:.2f}%\n"
+        f"Variação nos últimos 14 dias: {variation_14d:.2f}%\n"
+        f"Variação nos últimos 7 dias: {variation_7d:.2f}%"
+    )
+    
+def run_all_analyses():
+    # Obtém o preço e variação do Bitcoin
+    bitcoin_analysis = get_bitcoin_price_and_variation()
+    
+    # Inicializa a lista de resultados
+    results = {"Bitcoin Analysis": bitcoin_analysis}
+    
+    # Funções da classe de dados derivativos
+    deriv_data = derivatives_data()
+    
+    # Profundidade do mercado
+    results["Market Depth Analysis"] = deriv_data.market_depth().analysis()
+    
+    # Liquidações
+    results["Liquidations Analysis"] = deriv_data.liquidations().analysis()
+    
+    # Long/Short Ratio
+    results["Long/Short Ratio Analysis"] = deriv_data.ls_ratio().analysis()
+    
+    # Funding rate vol
+    results["Funding Rate Volume Analysis"] = deriv_data.fundingratevol().analysis()
+    
+    # Funding rate ohlc
+    results["Funding Rate OHLC Analysis"] = deriv_data.funding_rate_ohlc().analysis()
+    
+    # oi_weight_ohlc
+    results["OI Weight OHLC Analysis"] = deriv_data.oi_weight_ohlc().analysis()
+    
+    # oi_ohlc
+    results["OI OHLC Analysis"] = deriv_data.oi_ohlc().analysis()
+    
+    # oi_ohlc history
+    results["OI OHLC History Analysis"] = deriv_data.oi_ohlc_history().analysis()
+    
+    # Volume de opções
+    options_vol = derivatives_data.options_volume()
+    results["Options Volume Analysis"] = options_vol.analysis()
+    
+    # CVD
+    cvd = derivatives_data.cvd_data()
+    results["CVD Analysis"] = cvd.analysis()
+    
+    # Volume change
+    vol_change = derivatives_data.volume_change()
+    results["Volume Change Analysis"] = vol_change.analysis()
+    
+    # Skew
+    skew = derivatives_data.skew()
+    results["Skew Analysis"] = skew.analysis()
+    
+    # IV
+    iv = derivatives_data.iv()
+    results["IV Analysis"] = iv.analysis()
+    
+    # Funções da classe de dados on chain
     on_chain_volume = OnChain.on_chain_volume()
-    on_chain_volume_anl = on_chain_volume.analysis()
-    print(on_chain_volume_anl)
-
-    # Blockchain data
-    print("\nAnálise de BlockchainData")
+    results["On-Chain Volume Analysis"] = on_chain_volume.analysis()
+    
     blockchain_data = OnChain.BlockchainData()
-    blockchain_data_anl = blockchain_data.analysis()
-    print(blockchain_data_anl)
-
-    # Exchange flow
-    print("\nAnálise de ExchangeFlow")
+    results["Blockchain Data Analysis"] = blockchain_data.analysis()
+    
     exchange_flow = OnChain.ExchangeFlow()
-    exchange_flow_anl = exchange_flow.analysis()
-    print(exchange_flow_anl)
-
+    results["Exchange Flow Analysis"] = exchange_flow.analysis()
+    
     # Dados econômicos
     news_analyzer = economic_dt.economic_news()
     econ_data = economic_dt()
-
-    # CPI Data
-    print('Dados economicos')
-    print("Análise CPI:")
-    print(econ_data.cpi_data())
-
-    # PCE Data
-    print("\nAnálise PCE:")
-    print(econ_data.pce_data())
-
-    # PIB Data
-    print("\nAnálise PIB:")
-    print(econ_data.pib_data())
-
-    # Análise dos índices S&P 500 e Nasdaq
-    print("\nAnálise dos Índices:")
-    econ_data.analyze_indice()
-
-    # Top 5 notícias sobre Bitcoin com análise de sentimento
-    print("\nTop 5 Notícias sobre Bitcoin:")
-    bitcoin_news_df = news_analyzer.get_top_news_of_month_with_sentiment('Bitcoin')
-    print(bitcoin_news_df)
-
-    # Top 5 notícias sobre Economia Mundial com análise de sentimento
-    print("\nTop 5 Notícias sobre Economia Mundial:")
-    global_economy_news_df = news_analyzer.get_top_news_of_month_with_sentiment('Global Economy')
-    print(global_economy_news_df)
-
-    # Correlação entre Bitcoin e Ouro
-    print("\nCorrelação entre Bitcoin e Ouro:")
-    print(econ_data.gold_correlation())
-
-
-if __name__ == "__main__":
-    run_all_analyses()
+    
+    results["CPI Data"] = econ_data.cpi_data()
+    results["PCE Data"] = econ_data.pce_data()
+    results["PIB Data"] = econ_data.pib_data()
+    results["S&P 500 and Nasdaq Indices Analysis"] = econ_data.analyze_indice()
+    
+    results["Top 8 Bitcoin News"] = news_analyzer.get_top_news_of_month_with_sentiment('Bitcoin')
+    results["Top 8 Global Economy News"] = news_analyzer.get_top_news_of_month_with_sentiment('Global Economy')
+    results["Top 8 Global Economy News"] = news_analyzer.get_top_news_of_month_with_sentiment('US Interest Rate')
+    results["Top 8 Global Economy News"] = news_analyzer.get_top_news_of_month_with_sentiment('Crypto Market')
+    results["Bitcoin-Gold Correlation"] = econ_data.gold_correlation()
+    
+    return results

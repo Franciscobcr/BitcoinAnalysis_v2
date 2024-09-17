@@ -1,7 +1,6 @@
 import requests
 import pandas as pd
 from datetime import datetime, timedelta, timezone
-import ccxt
 import numpy as np
 import ta
 import pytz

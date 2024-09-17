@@ -10,7 +10,7 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 from newsapi import NewsApiClient
 from dotenv import load_dotenv
-
+from groq import Groq
 
 
 load_dotenv()
@@ -127,7 +127,7 @@ class economic_dt:
             self.model = AutoModelForSequenceClassification.from_pretrained("nlptown/bert-base-multilingual-uncased-sentiment")
             self.sentiment_pipeline = pipeline("sentiment-analysis", model=self.model, tokenizer=self.tokenizer)
 
-        def get_most_relevant_news(self, query, from_date, to_date, page_size=5):
+        def get_most_relevant_news(self, query, from_date, to_date, page_size=8):
             # Fazendo a consulta das notícias com o parâmetro de relevância
             all_articles = self.newsapi.get_everything(
                 q=query,
@@ -147,11 +147,27 @@ class economic_dt:
                 df['publishedAt'] = pd.to_datetime(df['publishedAt'])  # Convertendo para datetime
                 return df
             else:
-                return pd.DataFrame()  # Retorna DataFrame vazio se não houver notícias
+                return pd.DataFrame()
 
         def analyze_sentiment(self, text):
-            # Usa o BERT para analisar o sentimento do texto
-            return self.sentiment_pipeline(text)[0]  # Retorna a análise do sentimento
+            client = Groq(api_key=os.getenv('API_groq'))
+            chat_completion = client.chat.completions.create(
+            messages=[
+            {
+                "role": "system",
+                "content": "You are a data analyst API capable of sentiment analysis. Answer with the sentiment(positive, negative, neutral and the confidence_score: (number 0-1)"
+            },
+            {
+                "role": "user",
+                "content": f"{text}",
+            }
+            ],
+            model="llama3-8b-8192",
+            temperature=0.3,
+            )
+
+            return chat_completion.choices[0].message.content
+        
 
         def get_top_news_of_month_with_sentiment(self, subject):
             # Definir o período do último mês
@@ -175,7 +191,6 @@ class economic_dt:
             else:
                 return pd.DataFrame()  
 
-        
         
     def gold_correlation(self, ticker='BTC-USD'):
         def get_data(ticker, start_date, end_date):
