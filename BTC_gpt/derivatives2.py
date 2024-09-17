@@ -4,10 +4,6 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import ta
 import pytz
-import yfinance as yf
-import matplotlib.pyplot as plt
-from fredapi import Fred
-from bs4 import BeautifulSoup
 import os
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
