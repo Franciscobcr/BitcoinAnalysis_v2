@@ -5,7 +5,7 @@ import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Configurações da página
-st.set_page_config(page_title="GPT_BTC", page_icon="📖", layout="centered")
+st.set_page_config(page_title="GPT_BTC", page_icon="🪙", layout="centered")
 
 image = Image.open('/Users/ottohenriqueteixeira/projeto GPT Crypto/BitcoinAnalysis_v2/BTC_gpt/DALL·E 2024-09-16 23.13.45 - A detailed and dynamic illustration showing Bitcoin analysis. The central focus is a large Bitcoin symbol surrounded by charts, graphs, and data eleme.jpg')
 st.image(image, use_column_width=True)

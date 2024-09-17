@@ -86,4 +86,5 @@ class Conversation:
         )
         
         answer = response.choices[0].message.content
+        print(answer)
         return answer
