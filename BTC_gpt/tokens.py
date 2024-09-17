@@ -5,31 +5,31 @@ from derivatives2 import derivatives_data
 from onchain_data import OnChain
 from economic_data import economic_dt
 
-# Função para contar tokens
+
 def num_tokens_from_string(string: str, model_name: str) -> int:
     encoding = tiktoken.encoding_for_model(model_name)
     num_tokens = len(encoding.encode(string))
     return num_tokens
 
-# Função para capturar o output
+
 def capture_output():
-    # Redirecionar o stdout para uma string
+    
     output_capture = io.StringIO()
     sys.stdout = output_capture
 
     try:
-        # Chamar todas as funções que imprimem resultados
+        
         test_derivatives_data()
         test_on_chain_volume()
         test_blockchain_data()
         test_exchange_flow()
         run_all()
 
-        # Obter o output completo gerado pelas funções
+        
         output_text = output_capture.getvalue()
 
     finally:
-        # Restaurar o stdout para o padrão
+        
         sys.stdout = sys.__stdout__
 
     return output_text
