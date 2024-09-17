@@ -1,118 +1,103 @@
-
 from derivatives2 import derivatives_data
 from onchain_data import OnChain
 from economic_data import economic_dt
 
 
-def test_derivatives_data():
+def run_all_analyses():
     print("Funções da classe de dados derivativos.")
-
     deriv_data = derivatives_data()
 
-
-#profundidade do mercado
+    # Profundidade do mercado
     print("\nAnálise da profundidade do mercado...")
     market_depth_analysis = deriv_data.market_depth().analysis()
     print(market_depth_analysis)
 
-
-#Liquidações
+    # Liquidações
     print("\nAnálise de liquidações...")
     liquidation_analysis = deriv_data.liquidations().analysis()
     print(liquidation_analysis)
 
-    
-#Long/Short Ratio
+    # Long/Short Ratio
     print("\nAnálise de Long/Short Ratio...")
     ls_ratio_analysis = deriv_data.ls_ratio().analysis()
     print(ls_ratio_analysis)
 
-#Funding rate vol
+    # Funding rate vol
     print("\nAnálise de volume de funding rate...")
     fundingratevol_anl = deriv_data.fundingratevol().analysis()
     print(fundingratevol_anl)
 
-#Funding rate ohlc
+    # Funding rate ohlc
     print("\nAnálise de funding_rate_ohlc...")
     funding_rate_ohlc_anl = deriv_data.funding_rate_ohlc().analysis()
     print(funding_rate_ohlc_anl)
 
-#oi_weight_ohlc
+    # oi_weight_ohlc
     print("\nAnálise de oi_weight_ohlc")
     oi_weight_ohlc_anl = deriv_data.oi_weight_ohlc().analysis()
     print(oi_weight_ohlc_anl)
 
-#oi_ohlc
+    # oi_ohlc
     print("\nAnálise de oi_ohlc")
     oi_ohlc_anl = deriv_data.oi_ohlc().analysis()
     print(oi_ohlc_anl)
-#oi_ohlc_history
+
+    # oi_ohlc history
     print("\nAnálise de oi_ohlc history")
     oi_ohlc_history_anl = deriv_data.oi_ohlc_history().analysis()
     print(oi_ohlc_history_anl)
 
-#Volume de opções
+    # Volume de opções
     print("\nAnálise de Volume de opçoes")
-    options_vol = derivatives_data.options_volume()  
-    options_vol_anl = options_vol.analysis()  
+    options_vol = derivatives_data.options_volume()
+    options_vol_anl = options_vol.analysis()
     print(options_vol_anl)
 
-#CVD
+    # CVD
     print("\nAnálise de CVD")
-    cvd = derivatives_data.cvd_data()  
-    cvd_anl = cvd.analysis()  
+    cvd = derivatives_data.cvd_data()
+    cvd_anl = cvd.analysis()
     print(cvd_anl)
 
-#Volume change
+    # Volume change
     print("\nAnálise de Volume change")
-    vol_change = derivatives_data.volume_change()  
-    vol_change_anl = vol_change.analysis()  
+    vol_change = derivatives_data.volume_change()
+    vol_change_anl = vol_change.analysis()
     print(vol_change_anl)
 
-#Skew
+    # Skew
     print("\nAnálise de Options volume")
-    skew = derivatives_data.skew()  
+    skew = derivatives_data.skew()
     skew_anl = skew.analysis()
     print(skew_anl)
 
-#iv
+    # iv
     print("\nAnálise de IV")
-    iv = derivatives_data.iv()  
+    iv = derivatives_data.iv()
     iv_anl = iv.analysis()
     print(iv_anl)
 
-
-#volume onchain   
-def test_on_chain_volume():
-    print('Funções da classe de dados on chain.')
-    print("\nAnalise de on_chain_volume")
-
+    print('\nFunções da classe de dados on chain.')
+    
+    # Volume onchain
+    print("\nAnálise de on_chain_volume")
     on_chain_volume = OnChain.on_chain_volume()
     on_chain_volume_anl = on_chain_volume.analysis()
     print(on_chain_volume_anl)
 
-#block chain data
-def test_blockchain_data():
-    print("\nAnalise de BlockchainData")
-
-    # Instanciar a classe OnChain.BlockchainData
+    # Blockchain data
+    print("\nAnálise de BlockchainData")
     blockchain_data = OnChain.BlockchainData()
-
-    # Executar a análise
     blockchain_data_anl = blockchain_data.analysis()
     print(blockchain_data_anl)
 
-#exchange flow
-def test_exchange_flow():
-    print("\nAnalise de ExchangeFlow")
-
+    # Exchange flow
+    print("\nAnálise de ExchangeFlow")
     exchange_flow = OnChain.ExchangeFlow()
-
-    exchange_flow_anl  = exchange_flow.analysis()
+    exchange_flow_anl = exchange_flow.analysis()
     print(exchange_flow_anl)
 
-#dados economicos
-def run_all():
+    # Dados econômicos
     news_analyzer = economic_dt.economic_news()
     econ_data = economic_dt()
 
@@ -148,11 +133,5 @@ def run_all():
     print(econ_data.gold_correlation())
 
 
-
 if __name__ == "__main__":
-    # Rodar todos os testes
-    test_derivatives_data()
-    test_on_chain_volume()
-    test_blockchain_data()
-    test_exchange_flow()
-    run_all()
+    run_all_analyses()
