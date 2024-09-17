@@ -1,6 +1,8 @@
 from chatbot import Conversation
 import streamlit as st
 from PIL import Image
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Configurações da página
 st.set_page_config(page_title="GPT_BTC", page_icon="📖", layout="centered")
@@ -33,27 +35,4 @@ generate_button = st.button("💡 Gerar Análise")
 if generate_button:
     ai_response = Conversation()
     response = ai_response.send()
-    st.markdown("""
-    <style>
-        .response-container {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
-        }
-        .response-header {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-        .response-content {
-            font-size: 16px;
-            line-height: 1.5;
-        }
-    </style>
-    <div class="response-container">
-        <div class="response-header">Análise do GPT:</div>
-        <div class="response-content">{}</div>
-    </div>
-    """.format(response), unsafe_allow_html=True)
+    st.chat_message("ai").write(response)

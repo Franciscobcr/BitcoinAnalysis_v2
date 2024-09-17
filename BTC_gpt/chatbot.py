@@ -1,8 +1,18 @@
 from openai import OpenAI
 import base64
 import os
+from exec_script import run_all_analyses
+from datetime import datetime
 
-prompt = """
+def get_current_date_time():
+    now = datetime.now()
+    formatted_date_time = now.strftime("%d/%m/%Y %H:%M:%S")
+    return f"Data e horário atuais: {formatted_date_time}"
+
+data = get_current_date_time()
+prompt = f"""
+{data}
+
 ### Contexto:
 Você é um analista de investimento especializado em Bitcoin, com uma capacidade excepcional de raciocínio analítico. Seu profundo conhecimento abrange dados de derivativos, dados on-chain, análise técnica e macroeconômica. Seu objetivo principal é realizar previsões de movimentação do Bitcoin para operações de Swing Trading, ajustando suas análises dinamicamente com base nas condições de mercado mais recentes dentro de um horizonte de 4 semanas.
 
@@ -47,7 +57,7 @@ Forneça uma previsão precisa para BTC/USDT, continuamente ajustada com base em
 Previsão de Tendência: Indique se a tendência será de alta, baixa ou lateral dentro do horizonte de swing trading.
 Justificativa da Previsão: Forneça uma análise detalhada e justificativa da previsão, ajustada automaticamente conforme novos dados se tornam disponíveis.
 Recomendações: Sugira ações específicas (compra/venda), baseadas em simulações de impacto e ajustes automáticos.
-Nível de Confiança: Atribua um score de confiança à previsão, ajustado dinamicamente com base na eficácia recente dos indicadores.
+Nível de Confiança: Atribua um score em porcentage, de confiança à previsão, ajustado dinamicamente com base na eficácia recente dos indicadores.
 Gestão de Risco: Indique níveis recomendados de TP/SL, garantindo que a relação risco/recompensa seja superior a 1:2, alinhada com o horizonte de swing trading.
 """
 
@@ -60,27 +70,18 @@ class Conversation:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
 
-    def send(self, message=None, image_path=None):
+    def send(self):
         """Sends a message or image to OpenAI's API and returns the response."""
         messages = [{"role": "system", "content": f"{prompt}"}]
-        
-        if message:
-            messages.append({"role": "user", "content": message})
-
-        if image_path:
-            base64_image = self.encode_image(image_path)
-            messages.append({
-                "role": "user",
-                "content": [{
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{base64_image}"
-                    }
-                }]
-            })
+        dados = run_all_analyses()
+        dados_str = '\n'.join(f"{key}: {value}" for key, value in dados.items())
+        print(dados_str)
+        messages.append({"role": "user", "content": f"{dados_str}"})
+            
+        print(messages)
 
         response = self.client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-2024-08-06",
             messages=messages
         )
         
