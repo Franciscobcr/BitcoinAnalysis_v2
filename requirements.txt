@@ -10,7 +10,6 @@ yfinance
 bs4
 streamlit
 transformers
-torch
 matplotlib
 openai
 yfinance
