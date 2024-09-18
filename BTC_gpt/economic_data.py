@@ -5,8 +5,6 @@ from fredapi import Fred
 import ta 
 import requests
 import pandas as pd
-import nltk
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 from newsapi import NewsApiClient
 from dotenv import load_dotenv
