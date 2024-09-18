@@ -112,7 +112,7 @@ class Conversation:
         
         # Enviar a mensagem para a API da OpenAI e obter a resposta
         response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-2024-08-06",
             messages=messages
         )
         
