@@ -10,7 +10,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 st.set_page_config(page_title="GPT_BTC", page_icon="🪙", layout="centered")
 
 # Exibir a imagem
-image = Image.open('C:/Users/Francisco/Pictures/linkedin.jfif')
+image = Image.open('BTC_gpt/DALL·E 2024-09-16 23.13.45 - A detailed and dynamic illustration showing Bitcoin analysis. The central focus is a large Bitcoin symbol surrounded by charts, graphs, and data eleme.jpg')
 st.image(image, use_column_width=True)
 
 # Título da página
