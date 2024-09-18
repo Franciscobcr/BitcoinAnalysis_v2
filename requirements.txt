@@ -17,9 +17,7 @@ yfinance
 beautifulsoup4
 watchdog
 pytz
-zoneinfo
 python-dotenv
 newsapi
 groq
-zoneinfo
 tiktoken

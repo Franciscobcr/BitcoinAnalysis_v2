@@ -31,17 +31,13 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Botão para gerar a análise
 generate_button = st.button("💡 Gerar Análise")
 
-# Se o botão for clicado, gerar a resposta do Chatbot e salvar no CSV
+
 if generate_button:
-    # Exemplo de prompt enviado ao chatbot
     prompt = "Análise de swing trading para Bitcoin com base nos dados atuais"
     
-    # Gerar a resposta do chatbot
     ai_response = Conversation()
     response = ai_response.send()
 
-    # Exibir a resposta do Chatbot no Streamlit
     st.write(response)

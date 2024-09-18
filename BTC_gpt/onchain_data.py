@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 from zoneinfo import ZoneInfo  # Substituindo o uso de timedelta para fuso horário
 from dotenv import load_dotenv
+import streamlit as st
 
 load_dotenv()  # Carregar as variáveis do arquivo .env
 
@@ -32,7 +33,7 @@ class OnChain:
             }}
             """
 
-            headers = {'Authorization': f"Apikey {os.getenv('santiment_KEY')}"}
+            headers = {'Authorization': f"Apikey {st.secrets['santiment_KEY']}"}
 
             response = requests.post(url, json={'query': query}, headers=headers)
 
@@ -91,7 +92,7 @@ class OnChain:
             params = {
                 'fsym': 'BTC',
                 'limit': '30',
-                'api_key': os.getenv('CRYPTOCOMPARE_API_KEY')
+                'api_key': st.secrets['CRYPTOCOMPARE_API_KEY']
             }
             response = requests.get(url, params=params)
             
@@ -160,7 +161,7 @@ class OnChain:
             url = 'https://api.glassnode.com/v1/metrics/exchanges/flow_total_sum'
             params = {
                 'a': 'BTC',
-                'api_key': os.getenv('GLASSNODE_API_KEY'),
+                'api_key': st.secrets['GLASSNODE_API_KEY'],
                 's': int((datetime.now() - timedelta(days=30)).timestamp()), 
                 'u': int(datetime.now().timestamp()) 
             }
