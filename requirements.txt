@@ -17,7 +17,7 @@ beautifulsoup4
 watchdog
 pytz
 python-dotenv
-newsapi
+newsapi-python
 groq
 tiktoken
 flask
