@@ -21,3 +21,4 @@ newsapi
 groq
 tiktoken
 flask
+nltk
