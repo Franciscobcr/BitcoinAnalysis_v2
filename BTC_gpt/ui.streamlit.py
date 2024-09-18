@@ -2,18 +2,21 @@ from chatbot import Conversation
 import streamlit as st
 from PIL import Image
 import os
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
+import pandas as pd
+
 
 # Configurações da página
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 st.set_page_config(page_title="GPT_BTC", page_icon="🪙", layout="centered")
 
-image = Image.open('/Users/ottohenriqueteixeira/projeto GPT Crypto/BitcoinAnalysis_v2/BTC_gpt/DALL·E 2024-09-16 23.13.45 - A detailed and dynamic illustration showing Bitcoin analysis. The central focus is a large Bitcoin symbol surrounded by charts, graphs, and data eleme.jpg')
+# Exibir a imagem
+image = Image.open('C:/Users/Francisco/Pictures/linkedin.jfif')
 st.image(image, use_column_width=True)
 
 # Título da página
 st.title("📈 GPT Analista de BTC")
 
-# Descrição
+# Descrição com markdown e CSS
 st.markdown("""
 <style>
     .main-description {
@@ -28,11 +31,17 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Botão para gerar análise
+# Botão para gerar a análise
 generate_button = st.button("💡 Gerar Análise")
 
-# Se o botão for clicado, gerar a resposta do Chatbot
+# Se o botão for clicado, gerar a resposta do Chatbot e salvar no CSV
 if generate_button:
+    # Exemplo de prompt enviado ao chatbot
+    prompt = "Análise de swing trading para Bitcoin com base nos dados atuais"
+    
+    # Gerar a resposta do chatbot
     ai_response = Conversation()
     response = ai_response.send()
-    st.chat_message("ai").write(response)
+
+    # Exibir a resposta do Chatbot no Streamlit
+    st.write(response)
