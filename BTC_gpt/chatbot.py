@@ -5,7 +5,6 @@ from openai import OpenAI
 from exec_script import run_all_analyses
 from datetime import datetime
 
-# Função para inicializar o arquivo Excel ou garantir que ele exista
 def init_excel():
     if not os.path.exists('chatbot_data.xlsx'):
         # Criar um DataFrame vazio e salvar as colunas iniciais
@@ -106,19 +105,16 @@ class Conversation:
         # Executar as análises e obter os resultados
         analysis_results = run_all_analyses()
         analysis_str = '\n'.join(f"{key}: {value}" for key, value in analysis_results.items())
-        
-        # Adicionar os resultados da análise no prompt enviado ao chatbot
+
         messages.append({"role": "user", "content": analysis_str})
-        
-        # Enviar a mensagem para a API da OpenAI e obter a resposta
+
         response = self.client.chat.completions.create(
             model="gpt-4o-2024-08-06",
             messages=messages
         )
         
         answer = response.choices[0].message.content
-        
-        # Armazenar a resposta do chatbot e os resultados da análise no Excel
+
         store_data(prompt, answer, analysis_str)
         
         print(answer)

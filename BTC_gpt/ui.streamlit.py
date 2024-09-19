@@ -1,5 +1,7 @@
 from chatbot import Conversation
 import streamlit as st
+from datetime import datetime
+from output_analysis import obter_datas_disponiveis, processar_previsoes_por_data
 from PIL import Image
 import os
 import pandas as pd
@@ -33,11 +35,25 @@ st.markdown("""
 
 generate_button = st.button("💡 Gerar Análise")
 
-
 if generate_button:
-    prompt = "Análise de swing trading para Bitcoin com base nos dados atuais"
-    
     ai_response = Conversation()
     response = ai_response.send()
-
     st.write(response)
+    
+compare_button = st.button("Comparar resultado")
+if compare_button:
+    datas_disponiveis = obter_datas_disponiveis()
+    data_selecionada = st.selectbox("Selecione uma data", datas_disponiveis)
+
+    if st.button("Processar Previsões para a Data Selecionada"):
+        data_atual = datetime.now().date()
+        diferenca_dias = (data_atual - data_selecionada).days
+
+        if diferenca_dias < 7:
+            st.warning("Espere 7 dias para comparar os resultados!")
+        else:
+            analises = processar_previsoes_por_data(data_selecionada)
+            for analise in analises:
+                st.write(analise)
+            st.success("Previsões processadas com sucesso!")
+    
