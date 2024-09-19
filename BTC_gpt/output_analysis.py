@@ -1,7 +1,7 @@
 import pandas as pd
 from openai import OpenAI
 import streamlit as st
-import datetime as datetime, timedelta
+from datetime import datetime, timedelta
 import os
 import requests
 
