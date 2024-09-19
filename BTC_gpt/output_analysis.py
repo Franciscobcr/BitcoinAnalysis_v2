@@ -64,6 +64,7 @@ def analisar_previsao(previsao, data_selecionada):
 
 def processar_previsoes_por_data(data_selecionada):
     df = pd.read_excel('chatbot_data.xlsx', sheet_name='chatbot_analysis_data')
+    df['date_time'] = pd.to_datetime(df['date_time'])
     analises = []
 
     for index, row in df.iterrows():
@@ -79,5 +80,6 @@ def processar_previsoes_por_data(data_selecionada):
 
 def obter_datas_disponiveis():
     df = pd.read_excel('chatbot_data.xlsx', sheet_name='chatbot_analysis_data')
-    datas_unicas = df['date_time'].dt.date.unique()
-    return datas_unicas
+    df['date_time'] = pd.to_datetime(df['date_time'])
+    datas_disponiveis = df['date_time'].dt.strftime('%Y-%m-%d %H:%M:%S').unique()
+    return datas_disponiveis
