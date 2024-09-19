@@ -42,24 +42,18 @@ if generate_button:
     
 compare_button = st.button("Comparar resultado")
 if compare_button:
-    st.session_state['compare_button_clicked'] = True
-
-# Verificar se o botão foi clicado
-if st.session_state['compare_button_clicked']:
     datas_disponiveis = obter_datas_disponiveis()
-    st.session_state['data_selecionada'] = st.selectbox("Selecione uma data", datas_disponiveis, key='data_selecionada')
+    data_selecionada = st.selectbox("Selecione uma data", datas_disponiveis)
 
-    # Verificar se uma data foi selecionada
-    if st.session_state['data_selecionada'] and st.button("Processar Previsões para a Data Selecionada"):
+    if st.button("Comparar Previsões para a Data Selecionada"):
         data_atual = datetime.now().date()
-        data_selecionada = datetime.strptime(st.session_state['data_selecionada'], '%Y-%m-%d %H:%M:%S').date()
         diferenca_dias = (data_atual - data_selecionada).days
 
-        if diferenca_dias < 7:
-            st.warning("Espere 7 dias para comparar os resultados!")
-        else:
-            analises = processar_previsoes_por_data(st.session_state['data_selecionada'])
+        if diferenca_dias >= 7:
+            analises = processar_previsoes_por_data(data_selecionada)
             for analise in analises:
                 st.write(analise)
             st.success("Previsões processadas com sucesso!")
+        else:
+            st.warning("Espere 7 dias para comparar os resultados!")
     
