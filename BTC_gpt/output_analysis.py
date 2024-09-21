@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import os
 import requests
 
-client = OpenAI(api_key=st.secrets['OPENAI_KEY'])
+client = OpenAI(api_key=os.getenv('OPENAI_KEY'))
 
 def get_bitcoin_price_and_variation(base_date):
     base_url = "https://api.coingecko.com/api/v3"
