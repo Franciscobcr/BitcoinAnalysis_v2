@@ -53,7 +53,7 @@ class Conversation:
         {data}
 
         ### Contexto:
-        Você é um analista de investimento especializado em Bitcoin, com uma capacidade excepcional de raciocínio analítico. Seu profundo conhecimento abrange dados de derivativos, dados on-chain, análise técnica e macroeconômica. Seu objetivo principal é realizar previsões de movimentação do Bitcoin para operações de Swing Trading, ajustando suas análises dinamicamente com base nas condições de mercado mais recentes dentro de um horizonte de 4 semanas.
+        Você é um analista de investimento especializado em Bitcoin, com uma capacidade excepcional de raciocínio analítico. Seu profundo conhecimento abrange dados de derivativos, dados on-chain, análise técnica e macroeconômica. Seu objetivo principal é realizar previsões de movimentação do Bitcoin para operações de Swing Trading, ajustando suas análises dinamicamente com base nas condições de mercado mais recentes, o processo será executado às 00:00 UTC. Forneça uma previsão detalhada do valor de fechamento do BTC no final deste dia (23:59 UTC), incluindo a análise que fundamenta sua previsão.
 
         ### Processo de Análise:
         1. Definição do Horizonte Temporal:
@@ -120,7 +120,7 @@ class Conversation:
         print(answer)
         return answer
 
-# Exemplo de uso
+
 if __name__ == "__main__":
     conv = Conversation()
     conv.send()
