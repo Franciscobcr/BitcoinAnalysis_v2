@@ -1,4 +1,4 @@
-from chatbot import Conversation
+from chatbot2 import Conversation
 import streamlit as st
 from datetime import datetime
 from output_analysis import obter_datas_disponiveis, processar_previsoes_por_data

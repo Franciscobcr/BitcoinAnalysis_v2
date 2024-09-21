@@ -17,7 +17,7 @@ class derivatives_data:
     def __init__(self):
         # Instancia a classe options_volume em vez de chamar diretamente a análise
         self.options_volume = self.options_volume()
-        self.coinglass_key = ""
+        self.coinglass_key = "936395e1aa6943659c5ff7b729981532"
 
     def convert_to_brt(self, timestamp):
         dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
@@ -275,7 +275,7 @@ class derivatives_data:
         BASE_URL = "https://open-api-v3.coinglass.com/api/futures/orderbook/history"
 
         def get_order_book_depth(self, symbol, exchange="Binance", interval="30m", limit=1000, start_time=None, end_time=None):
-            headers = {"accept": "application/json", "CG-API-KEY": st.secrets['COINGLASS_KEY']}
+            headers = {"accept": "application/json", "CG-API-KEY": os.getenv['COINGLASS_KEY']}
             
             params = {
                 "exchange": exchange,
@@ -377,7 +377,7 @@ class derivatives_data:
     
     class liquidations:
         BASE_URL = "https://open-api-v3.coinglass.com/api/futures/liquidation/v2/history"
-        headers = {"accept": "application/json","CG-API-KEY": st.secrets['COINGLASS_KEY']}
+        headers = {"accept": "application/json","CG-API-KEY": os.getenv['COINGLASS_KEY']}
 
         # Função para capturar o histórico de liquidações de Long/Short de 30 em 30 minutos
         def get_liquidation_history(self, symbol, exchange="Binance", interval="30m", limit=1000, start_time=None, end_time=None):
@@ -477,7 +477,7 @@ class derivatives_data:
             
     class ls_ratio:
         BASE_URL = "https://open-api-v3.coinglass.com/api/futures/globalLongShortAccountRatio/history"
-        headers = {"accept": "application/json", "CG-API-KEY": st.secrets['COINGLASS_KEY']}
+        headers = {"accept": "application/json", "CG-API-KEY": os.getenv['COINGLASS_KEY']}
 
         def convert_to_brt(self, timestamp):
             dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)  # Usando timezone.utc
@@ -569,7 +569,7 @@ class derivatives_data:
             
     class funding_rate_ohlc:
         BASE_URL = "https://open-api-v3.coinglass.com/api/futures/fundingRate/ohlc-history"
-        headers = {"accept": "application/json", "CG-API-KEY": st.secrets['COINGLASS_KEY']}
+        headers = {"accept": "application/json", "CG-API-KEY": os.getenv['COINGLASS_KEY']}
 
         def convert_to_brt(self, timestamp):
             dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)  # Usando timezone.utc
@@ -658,7 +658,7 @@ class derivatives_data:
             
     class oi_weight_ohlc:
         BASE_URL = "https://open-api-v3.coinglass.com/api/futures/fundingRate/oi-weight-ohlc-history"
-        headers = {"accept": "application/json", "CG-API-KEY": st.secrets['COINGLASS_KEY']}
+        headers = {"accept": "application/json", "CG-API-KEY": os.getenv['COINGLASS_KEY']}
 
         
         def convert_to_brt(self, timestamp):
@@ -744,7 +744,7 @@ class derivatives_data:
 
     class fundingratevol:
         BASE_URL = "https://open-api-v3.coinglass.com/api/futures/fundingRate/vol-weight-ohlc-history"
-        headers = {"accept": "application/json", "CG-API-KEY": st.secrets['COINGLASS_KEY']}
+        headers = {"accept": "application/json", "CG-API-KEY": os.getenv['COINGLASS_KEY']}
 
         def convert_to_brt(self, timestamp):
             dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)  # Usando timezone.utc
@@ -833,7 +833,7 @@ class derivatives_data:
             
     class oi_ohlc:
         BASE_URL = "https://open-api-v3.coinglass.com/api/futures/openInterest/ohlc-history"
-        headers = {"accept": "application/json", "CG-API-KEY": st.secrets['COINGLASS_KEY']}
+        headers = {"accept": "application/json", "CG-API-KEY": os.getenv['COINGLASS_KEY']}
 
         
         def convert_to_brt(self, timestamp):
@@ -918,7 +918,7 @@ class derivatives_data:
             
     class oi_ohlc_history:
         BASE_URL = "https://open-api-v3.coinglass.com/api/futures/openInterest/ohlc-aggregated-history"
-        headers = {"accept": "application/json","CG-API-KEY": st.secrets['COINGLASS_KEY']}
+        headers = {"accept": "application/json","CG-API-KEY": os.getenv['COINGLASS_KEY']}
 
         def convert_to_brt(self, timestamp):
             dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)  # Usando timezone.utc

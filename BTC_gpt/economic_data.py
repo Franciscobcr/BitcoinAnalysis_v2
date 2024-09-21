@@ -17,7 +17,7 @@ load_dotenv()
 class economic_dt:
     
     def __init__(self):
-        self.fred = Fred(api_key=st.secrets['API_fred'])
+        self.fred = Fred(api_key=os.getenv['API_fred'])
         self.economic_news = self.economic_news()
         
     def cpi_data(self):
@@ -118,7 +118,7 @@ class economic_dt:
 
     class economic_news:
         def __init__(self):
-            self.api_news = st.secrets['API_news']
+            self.api_news = os.getenv['API_news']
             # Inicializando o cliente da NewsAPI
             self.newsapi = NewsApiClient(api_key=self.api_news)
             # Carregar o modelo BERT para análise de sentimentos
@@ -149,7 +149,7 @@ class economic_dt:
                 return pd.DataFrame()
 
         def analyze_sentiment(self, text):
-            client = Groq(api_key=st.secrets['API_groq'])
+            client = Groq(api_key=os.getenv['API_groq'])
             chat_completion = client.chat.completions.create(
             messages=[
             {
