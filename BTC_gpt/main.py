@@ -1,11 +1,14 @@
 from chatbot2 import Conversation
+from database_setting import insert_actual_bitcoin_data
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timezone
 from output_analysis import obter_datas_disponiveis, processar_previsoes_por_data
 from PIL import Image
 import os
 import pandas as pd
-
+import schedule
+import time
+import pytz
 
 # Configurações da página
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -56,4 +59,13 @@ if compare_button:
             st.success("Previsões processadas com sucesso!")
         else:
             st.warning("Espere 7 dias para comparar os resultados!")
-    
+            
+def schedule_tasks():
+    schedule.every().day.at("00:00", tz=pytz.UTC).do(ai_response)
+    schedule.every().day.at("00:05", tz=pytz.UTC).do(insert_actual_bitcoin_data)
+
+    print(f"Tarefas agendadas. Aguardando execução... (UTC: {datetime.now(timezone.utc)})")
+
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
