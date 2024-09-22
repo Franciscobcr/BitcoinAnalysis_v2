@@ -24,3 +24,5 @@ flask
 nltk
 openpyxl
 torch
+schedule
+psycopg2
