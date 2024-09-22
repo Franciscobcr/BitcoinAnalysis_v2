@@ -42,7 +42,6 @@ class Conversation:
         
         answer = response.choices[0].message.content
 
-        # Armazenar os dados no banco de dados com formatação aplicada
         store_prediction(prompt, answer, analysis_str)
         
         print(answer)
