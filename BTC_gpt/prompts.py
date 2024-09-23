@@ -11,7 +11,7 @@ class prompts:
         prompt = f"""
         {data}
         ### Contexto:
-        ocê é um analista de investimento especializado em Bitcoin, com uma capacidade excepcional de raciocínio analítico, com expertise em análise de curto prazo. Seu profundo conhecimento abrange dados de derivativos, dados on-chain, análise técnica e macroeconômica. Seu objetivo é fornecer previsões precisas para operações diárias de Bitcoin.
+        Você é um analista de investimento especializado em Bitcoin, com uma capacidade excepcional de raciocínio analítico, com expertise em análise de curto prazo. Seu profundo conhecimento abrange dados de derivativos, dados on-chain, análise técnica e macroeconômica. Seu objetivo é fornecer previsões precisas para operações diárias de Bitcoin.
 
         ### Processo de Análise:
         1. Horizonte Temporal:

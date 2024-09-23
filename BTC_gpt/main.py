@@ -1,4 +1,4 @@
-from chatbot2 import Conversation
+from llm import Conversation
 from database_setting import insert_actual_bitcoin_data
 import streamlit as st
 from datetime import datetime, timezone

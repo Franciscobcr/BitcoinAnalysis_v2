@@ -4,9 +4,11 @@ from datetime import datetime, timedelta, timezone
 import requests
 from dotenv import load_dotenv
 
+# Carrega as variáveis de ambiente
 load_dotenv()
 
 def connect_to_db():
+    """Conecta ao banco de dados PostgreSQL usando variáveis de ambiente."""
     connection = psycopg2.connect(
         host=os.getenv('DB_HOST'),
         user=os.getenv('DB_USER'),
@@ -16,6 +18,7 @@ def connect_to_db():
     return connection
 
 def create_db():
+    """Cria a tabela chatbot_data se ela ainda não existir no banco de dados."""
     connection = connect_to_db()
     with connection.cursor() as cursor:
         cursor.execute('''
@@ -25,15 +28,15 @@ def create_db():
                 prompt TEXT,
                 response TEXT,
                 analysis_results TEXT,
-                Recommendation TEXT,
-                Trust_rate NUMERIC,
-                Stop_loss NUMERIC,
-                Take_profit NUMERIC,
-                Risk_return NUMERIC,
-                BTC_high NUMERIC,
-                BTC_low NUMERIC,
-                BTC_close NUMERIC,
-                BTC_open NUMERIC,
+                recommendation TEXT,
+                trust_rate NUMERIC,
+                stop_loss NUMERIC,
+                take_profit NUMERIC,
+                risk_return NUMERIC,
+                btc_high NUMERIC,
+                btc_low NUMERIC,
+                btc_close NUMERIC,
+                btc_open NUMERIC,
                 prediction_date DATE,
                 actual_date DATE
             )
@@ -41,23 +44,32 @@ def create_db():
         connection.commit()
     connection.close()
 
-def store_prediction(prompt, response, analysis_results):
+def store_prediction(prompt, response, recommendation, trust_rate, stop_loss, take_profit, risk_return, btc_high, btc_low, btc_close, btc_open, actual_date):
+    """Armazena a previsão no banco de dados, incluindo o prompt e a resposta da API."""
     connection = connect_to_db()
     with connection.cursor() as cursor:
         prediction_date = datetime.now(timezone.utc).date()
-        actual_date = prediction_date + timedelta(days=1)
-        
+
         cursor.execute('''
             INSERT INTO chatbot_data (
-                datetime, prompt, response, analysis_results, 
+                datetime, prompt, response, Recommendation, Trust_rate, Stop_loss, 
+                Take_profit, Risk_return, BTC_high, BTC_low, BTC_close, BTC_open, 
                 prediction_date, actual_date
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             datetime.now(timezone.utc),
-            prompt.strip().replace("\n", " "),
-            response.strip().replace("\n", " "),
-            analysis_results.strip().replace("\n", " "),
+            prompt,
+            response,
+            recommendation,
+            trust_rate,
+            stop_loss,
+            take_profit,
+            risk_return,
+            btc_high,
+            btc_low,
+            btc_close,
+            btc_open,
             prediction_date,
             actual_date
         ))
@@ -65,18 +77,17 @@ def store_prediction(prompt, response, analysis_results):
     connection.close()
 
 def get_bitcoin_data(date):
-    # URL da API do CoinGecko para dados OHLC do Bitcoin (últimas 24 horas)
+    """Obtém dados OHLC do Bitcoin da API CoinGecko."""
     url = "https://api.coingecko.com/api/v3/coins/bitcoin/ohlc?vs_currency=usd&days=1"
     
     try:
         response = requests.get(url)
         data = response.json()
         
-        
         if data and len(data) > 0:
             open_price = data[0][1]
             close_price = data[-1][4] 
-            high_price = max(item[2] for item in data) 
+            high_price = max(item[2] for item in data)
             low_price = min(item[3] for item in data)
             
             print(f"Dados do Bitcoin para o dia inteiro:")
@@ -90,16 +101,18 @@ def get_bitcoin_data(date):
     except requests.RequestException as e:
         print(f"Erro ao buscar dados do Bitcoin: {e}")
         return None
-        
+
 def clean_up_test_data():
+    """Remove os dados de teste da tabela chatbot_data."""
     connection = connect_to_db()
     with connection.cursor() as cursor:
-        cursor.execute("DELETE FROM chatbot_data WHERE prompt = 'Teste prompt'")
+        cursor.execute("DELETE FROM chatbot_data WHERE Recommendation = 'Teste'")
         connection.commit()
     connection.close()
     print("Dados de teste removidos.")
-    
+
 def insert_actual_bitcoin_data():
+    """Insere dados reais do Bitcoin na tabela chatbot_data."""
     connection = connect_to_db()
     with connection.cursor() as cursor:
         yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
@@ -110,7 +123,7 @@ def insert_actual_bitcoin_data():
             cursor.execute('''
                 UPDATE chatbot_data
                 SET BTC_high = %s, BTC_low = %s, BTC_close = %s, BTC_open = %s
-                WHERE actual_date = %s AND BTC_high IS NULL
+                WHERE prediction_date = %s AND BTC_high IS NULL
             ''', (btc_high, btc_low, btc_close, btc_open, yesterday))
             affected_rows = cursor.rowcount
             connection.commit()
