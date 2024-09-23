@@ -24,7 +24,6 @@ def create_db():
                 datetime TIMESTAMP NOT NULL,
                 prompt TEXT,
                 response TEXT,
-                analysis_results TEXT,
                 Recommendation TEXT,
                 Trust_rate NUMERIC,
                 Stop_loss NUMERIC,
