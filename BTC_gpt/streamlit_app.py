@@ -10,6 +10,8 @@ import re
 from sqlalchemy import create_engine
 import pandas as pd
 import logging
+import numpy as np
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,62 +23,100 @@ brazil_tz = pytz.timezone('America/Sao_Paulo')
 def format_time(dt):
     return dt.strftime('%H:%M:%S')
 
-def get_bitcoin_data():
+def get_bitcoin_data(limit):
     connection = connect_to_db()
-    query = """
+    query = f"""
     SELECT 
         datetime as timestamp,
         btc_close as price
     FROM chatbot_data
     WHERE btc_close IS NOT NULL
-    ORDER BY datetime
+    ORDER BY datetime DESC
+    LIMIT {limit}
     """
     df = pd.read_sql_query(query, connection)
     connection.close()
     
     if not df.empty:
-        df['daily_return'] = df['price'].pct_change()
-        df['cumulative_return'] = (1 + df['daily_return']).cumprod() - 1
         return df
     return None
 
-def get_bitcoin_returns():
-    bitcoin_data = get_bitcoin_data()
-    if bitcoin_data is not None:
-        return bitcoin_data[['timestamp', 'cumulative_return']].rename(columns={'timestamp': 'date'})
-    return pd.DataFrame()
+def get_bitcoin_returns(analysis_date):
+    # Converter a data de análise para o formato necessário
+    analysis_date_str = analysis_date.strftime("%d-%m-%Y")
+    
+    # Calcular a data do dia anterior
+    previous_date = analysis_date - timedelta(days=1)
+    previous_date_str = previous_date.strftime("%d-%m-%Y")
+    
+    # Fazer a chamada à API do CoinGecko
+    url = f"https://api.coingecko.com/api/v3/coins/bitcoin/history?date={analysis_date_str}"
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        current_price = data['market_data']['current_price']['usd']
+        
+        # Obter o preço do dia anterior
+        url_previous = f"https://api.coingecko.com/api/v3/coins/bitcoin/history?date={previous_date_str}"
+        response_previous = requests.get(url_previous)
+        
+        if response_previous.status_code == 200:
+            data_previous = response_previous.json()
+            previous_price = data_previous['market_data']['current_price']['usd']
+            
+            # Calcular o retorno
+            daily_return = (current_price - previous_price) / previous_price
+            
+            return pd.DataFrame({
+                'date': [analysis_date],
+                'price': [current_price],
+                'daily_return': [daily_return],
+                'cumulative_return': [daily_return]  # Para um dia, é o mesmo que o retorno diário
+            })
+    
+    # Se algo der errado, retornar um DataFrame vazio
+    return pd.DataFrame(columns=['date', 'price', 'daily_return', 'cumulative_return'])
 
 def get_operation_data():
     connection = connect_to_db()
     query = """
     SELECT 
         prediction_date,
-        AVG(
-            CASE 
-                WHEN risk_return LIKE '%:%' THEN 
-                    CAST(SPLIT_PART(risk_return, ':', 2) AS FLOAT) / 
-                    CAST(SPLIT_PART(risk_return, ':', 1) AS FLOAT)
-                WHEN risk_return ~ '^[-]?[0-9]*\.?[0-9]+$' 
-                THEN CAST(risk_return AS FLOAT)
-                ELSE NULL
-            END
-        ) as avg_risk_return
+        risk_return
     FROM 
         chatbot_data
     WHERE 
         actual_date IS NOT NULL
         AND risk_return IS NOT NULL
-        AND risk_return != ''
-    GROUP BY 
-        prediction_date
+        AND TRIM(risk_return) != ''
     ORDER BY 
         prediction_date
     """
     df = pd.read_sql_query(query, connection)
     connection.close()
     
+    def process_risk_return(value):
+        value = str(value).strip()
+        if ':' in value:
+            parts = value.split(':')
+            if len(parts) == 2:
+                try:
+                    return float(parts[1].replace(',', '.')) / float(parts[0].replace(',', '.'))
+                except ValueError:
+                    return np.nan
+        else:
+            try:
+                return float(value.replace(',', '.'))
+            except ValueError:
+                return np.nan
+    
+    df['avg_risk_return'] = df['risk_return'].apply(process_risk_return)
+    df = df.groupby('prediction_date')['avg_risk_return'].mean().reset_index()
+    
     if not df.empty:
         df['cumulative_return'] = (1 + df['avg_risk_return']).cumprod() - 1
+    
     return df
 
 def get_bitcoin_returns():
@@ -140,13 +180,29 @@ def get_gpt_analysis():
         return None
 
 def display_bitcoin_data(data):
-    st.header("Dados do Bitcoin")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric(label="Preço atual", value=f"${data['price']:,.2f}", delta=None)
-    col2.metric(label="Variação 30 dias", value=f"{data['var_30d']:.2f}%", delta=f"{data['var_30d']:.2f}%")
-    col3.metric(label="Variação 14 dias", value=f"{data['var_14d']:.2f}%", delta=f"{data['var_14d']:.2f}%")
-    col4.metric(label="Variação 7 dias", value=f"{data['var_7d']:.2f}%", delta=f"{data['var_7d']:.2f}%")
-    st.text(f"Última atualização: {data['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}")
+    if data is not None and not data.empty:
+        col1, col2 = st.columns(2)
+        
+        latest_price = data['price'].iloc[-1]
+        latest_timestamp = data['timestamp'].iloc[-1]
+        
+        col1.metric(label="Preço atual", value=f"${latest_price:,.2f}", delta=None)
+        col2.metric(label="Data da última atualização", value=latest_timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+        
+        if len(data) >= 1:
+            col1, col2, col3 = st.columns(3)
+            
+            var_1d = ((latest_price / data['price'].iloc[-2]) - 1) * 100 if len(data) >= 2 else None
+            var_7d = ((latest_price / data['price'].iloc[0]) - 1) * 100 if len(data) >= 7 else None
+            var_total = ((latest_price / data['price'].iloc[0]) - 1) * 100
+            
+            col1.metric(label="Variação 24h", value=f"{var_1d:.2f}%" if var_1d is not None else "N/A")
+            col2.metric(label="Variação 7 dias", value=f"{var_7d:.2f}%" if var_7d is not None else "N/A")
+            col3.metric(label=f"Variação total ({len(data)} registros)", value=f"{var_total:.2f}%")
+        else:
+            st.info("Não há dados históricos suficientes para calcular variações de preço.")
+    else:
+        st.error("Não foi possível obter dados do Bitcoin.")
 
 def display_next_updates():
     st.header("Próximas Atualizações")
@@ -191,7 +247,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-bitcoin_data = get_bitcoin_data()
+bitcoin_data = get_bitcoin_data(30)
 if bitcoin_data is not None:
     display_bitcoin_data(bitcoin_data)
 else:
@@ -199,23 +255,60 @@ else:
 
 display_next_updates()
 
-operation_data = get_operation_data()
-btc_returns = get_bitcoin_returns()
 
-if not operation_data.empty and not btc_returns.empty and len(operation_data) > 1 and len(btc_returns) > 1:
+def display_comparison_graph(operation_data, btc_returns):
     st.header("Comparação de Rentabilidade")
+    
+    #st.write("Debug Info:")
+    #st.write(f"Operation Data: {operation_data.to_dict('records')}")
+    #st.write(f"BTC Returns: {btc_returns.to_dict('records')}")
+    
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=operation_data['prediction_date'], y=operation_data['cumulative_return'], 
-                             mode='lines', name='Rentabilidade das Operações'))
-    fig.add_trace(go.Scatter(x=btc_returns['date'], y=btc_returns['cumulative_return'], 
-                             mode='lines', name='Rentabilidade do Bitcoin'))
-    fig.update_layout(title='Comparação de Rentabilidade: Operações vs Bitcoin',
-                      xaxis_title='Data', yaxis_title='Retorno Cumulativo')
+
+    # Add trace for operation data
+    if not operation_data.empty:
+        fig.add_trace(go.Scatter(
+            x=operation_data['prediction_date'], 
+            y=operation_data['avg_risk_return'], 
+            mode='markers+lines', 
+            name='Rentabilidade das Operações'
+        ))
+
+    # Add trace for Bitcoin returns
+    if not btc_returns.empty:
+        # Remove NaN values
+        btc_returns_clean = btc_returns.dropna()
+        fig.add_trace(go.Scatter(
+            x=btc_returns_clean['date'], 
+            y=btc_returns_clean['cumulative_return'], 
+            mode='markers+lines', 
+            name='Rentabilidade do Bitcoin'
+        ))
+
+    fig.update_layout(
+        title='Comparação de Rentabilidade: Operações vs Bitcoin',
+        xaxis_title='Data',
+        yaxis_title='Retorno Cumulativo',
+        showlegend=True
+    )
+
+    # Adjust y-axis to show both datasets clearly
+    y_min = min(operation_data['avg_risk_return'].min() if not operation_data.empty else 0,
+                btc_returns_clean['cumulative_return'].min() if not btc_returns_clean.empty else 0)
+    y_max = max(operation_data['avg_risk_return'].max() if not operation_data.empty else 0,
+                btc_returns_clean['cumulative_return'].max() if not btc_returns_clean.empty else 0)
+    y_range = y_max - y_min
+    fig.update_yaxes(range=[y_min - 0.1 * y_range, y_max + 0.1 * y_range])
+
     st.plotly_chart(fig)
-else:
-    st.error("Dados de rentabilidade insuficientes para gerar o gráfico.")
+
     st.write(f"Número de registros de operações: {len(operation_data)}")
     st.write(f"Número de registros de retornos do Bitcoin: {len(btc_returns)}")
+
+# Usage
+operation_data = get_operation_data()
+btc_returns = get_bitcoin_returns()
+display_comparison_graph(operation_data, btc_returns)
 
 st.header("Última Análise GPT")
 gpt_analysis = get_gpt_analysis()
