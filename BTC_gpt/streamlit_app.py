@@ -11,6 +11,7 @@ from sqlalchemy import create_engine
 import pandas as pd
 import logging
 import numpy as np
+import requests
 
 
 logging.basicConfig(level=logging.INFO)
