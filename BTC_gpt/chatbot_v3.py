@@ -132,6 +132,3 @@ class Conversation:
         return analyzed_data
 
 
-if __name__ == "__main__":
-    conv = Conversation()
-    conv.send()
