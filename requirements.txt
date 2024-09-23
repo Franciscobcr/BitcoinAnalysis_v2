@@ -27,3 +27,4 @@ torch
 schedule
 psycopg2
 plotly
+psutil
