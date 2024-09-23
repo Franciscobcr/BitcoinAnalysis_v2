@@ -28,3 +28,4 @@ schedule
 psycopg2
 plotly
 psutil
+sqlalchemy
