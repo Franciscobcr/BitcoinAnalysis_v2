@@ -131,3 +131,5 @@ def insert_actual_bitcoin_data():
         else:
             print(f"Falha ao obter dados reais do Bitcoin para {yesterday}.")
     connection.close()
+
+

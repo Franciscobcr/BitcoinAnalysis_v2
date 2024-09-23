@@ -7,6 +7,8 @@ from database_setting import insert_actual_bitcoin_data, connect_to_db
 from exec_script import get_bitcoin_price_and_variation
 import pandas as pd
 import threading
+import json
+import re
 
 brazil_tz = pytz.timezone('America/Sao_Paulo')
 
@@ -18,6 +20,29 @@ def run_conversation():
 
 def update_bitcoin_data():
     data = get_bitcoin_price_and_variation()
+    
+    # Verifique se o retorno é uma string e precisa ser processado
+    if isinstance(data, str):
+        # Usar regex para extrair os valores de 'price', 'var_30d', 'var_14d' e 'var_7d'
+        price_match = re.search(r"Preço atual do Bitcoin: \$([0-9,.]+)", data)
+        var_30d_match = re.search(r"Variação nos últimos 30 dias: ([0-9,.]+)%", data)
+        var_14d_match = re.search(r"Variação nos últimos 14 dias: ([0-9,.]+)%", data)
+        var_7d_match = re.search(r"Variação nos últimos 7 dias: ([0-9,.]+)%", data)
+        
+        # Certifique-se de que as correspondências foram encontradas antes de prosseguir
+        if price_match and var_30d_match and var_14d_match and var_7d_match:
+            data = {
+                'price': float(price_match.group(1).replace(',', '')),
+                'var_30d': float(var_30d_match.group(1).replace(',', '')),
+                'var_14d': float(var_14d_match.group(1).replace(',', '')),
+                'var_7d': float(var_7d_match.group(1).replace(',', ''))
+            }
+        else:
+            print("Erro ao processar os dados da string.")
+            return
+    else:
+        print("Erro: O objeto data não é uma string.")
+
     save_bitcoin_data(data)
     print(f"Dados do Bitcoin atualizados em {datetime.now(brazil_tz)}")
 
@@ -63,7 +88,6 @@ def calculate_bitcoin_returns():
     print(f"Retornos do Bitcoin calculados em {datetime.now(brazil_tz)}")
 
 def save_gpt_analysis(analysis):
-    # Implementar a lógica para salvar a análise no banco de dados
     connection = connect_to_db()
     cursor = connection.cursor()
     cursor.execute("""
@@ -74,7 +98,6 @@ def save_gpt_analysis(analysis):
     connection.close()
 
 def save_bitcoin_data(data):
-    # Implementar a lógica para salvar os dados do Bitcoin no banco de dados
     connection = connect_to_db()
     cursor = connection.cursor()
     cursor.execute("""
@@ -85,13 +108,11 @@ def save_bitcoin_data(data):
     connection.close()
 
 def save_operation_data(df):
-    # Implementar a lógica para salvar os dados de operação no banco de dados
     connection = connect_to_db()
     df.to_sql('operation_data', connection, if_exists='replace', index=False)
     connection.close()
 
 def save_bitcoin_returns(df):
-    # Implementar a lógica para salvar os retornos do Bitcoin no banco de dados
     connection = connect_to_db()
     df.to_sql('bitcoin_returns', connection, if_exists='replace', index=False)
     connection.close()
@@ -106,15 +127,12 @@ def schedule_next_run(task, scheduled_time):
     print(f"Próxima execução de {task.__name__} agendada para {next_run}")
 
 if __name__ == "__main__":
-    # Agendar tarefas diárias
     schedule_next_run(run_conversation, datetime.now(brazil_tz).replace(hour=21, minute=0))
     schedule_next_run(insert_actual_bitcoin_data, datetime.now(brazil_tz).replace(hour=21, minute=5))
 
-    # Agendar tarefas horárias
     schedule.every().hour.do(update_operation_data)
     schedule.every().hour.do(calculate_bitcoin_returns)
 
-    # Agendar tarefas por minuto
     schedule.every().minute.do(update_bitcoin_data)
 
     print(f"Servidor de tarefas iniciado. (Horário de Brasília: {datetime.now(brazil_tz)})")

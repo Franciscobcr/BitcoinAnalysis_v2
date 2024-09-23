@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from database_setting import connect_to_db
 import re
+from sqlalchemy import create_engine
+import pandas as pd
 
 # Configurações da página
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -92,7 +94,7 @@ def display_chart(operation_data, btc_data):
                       xaxis_title='Data', yaxis_title='Retorno Cumulativo')
     st.plotly_chart(fig)
 
-st.image("/Users/ottohenriqueteixeira/projeto GPT Crypto/BitcoinAnalysis_Rick/BTC_gpt/image_btc.jpg", use_column_width=True)
+st.image("D:\downloads\WhatsApp Image 2024-09-22 at 20.44.23.jpeg", use_column_width=True)
 st.title("📈 GPT Analista de BTC")
 
 # Descrição com markdown e CSS

@@ -4,6 +4,7 @@ import os
 import time
 import signal
 import psutil
+from datetime import datetime, timedelta, timezone
 
 # Arquivo de controle para sinalizar a interrupção
 STOP_FILE = '/tmp/stop_gpt_btc_analyzer'
@@ -65,3 +66,4 @@ if __name__ == "__main__":
         terminate_process(streamlit_process)
         terminate_process(task_server_process)
         remove_stop_file()
+
