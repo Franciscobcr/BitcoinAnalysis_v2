@@ -29,9 +29,9 @@ def get_bitcoin_data(limit):
     query = f"""
     SELECT 
         datetime as timestamp,
-        btc_close as price
+        value_btc as price
     FROM chatbot_data
-    WHERE btc_close IS NOT NULL
+    WHERE value_btc IS NOT NULL
     ORDER BY datetime DESC
     LIMIT {limit}
     """
@@ -125,18 +125,18 @@ def get_bitcoin_returns():
     query = """
     SELECT 
         DATE(datetime) as date,
-        btc_close
+        value_btc
     FROM 
         chatbot_data
     WHERE
-        btc_close IS NOT NULL
+        value_btc IS NOT NULL
     ORDER BY 
         datetime
     """
     df = pd.read_sql_query(query, connection)
     connection.close()
     
-    df['return'] = df['btc_close'].pct_change()
+    df['return'] = df['value_btc'].pct_change()
     df = df.groupby('date')['return'].mean().reset_index()
     df['cumulative_return'] = (1 + df['return']).cumprod() - 1
     
@@ -187,7 +187,7 @@ def display_bitcoin_data(data):
         latest_price = data['price'].iloc[-1]
         latest_timestamp = data['timestamp'].iloc[-1]
         
-        col1.metric(label="Preço atual", value=f"${latest_price:,.2f}", delta=None)
+        col1.metric(label="Preço atual", value=f"${latest_price:,}", delta=None)
         col2.metric(label="Data da última atualização", value=latest_timestamp.strftime("%Y-%m-%d %H:%M:%S"))
         
         if len(data) >= 1:
@@ -340,3 +340,7 @@ if st.session_state.update_counter >= 60:
     st.rerun()
 
 st.empty().text(f"Próxima atualização em {60 - st.session_state.update_counter} segundos")
+
+if __name__ == "__main__":
+    conv = Conversation()
+    conv.send()
