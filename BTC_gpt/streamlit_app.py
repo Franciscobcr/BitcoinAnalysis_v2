@@ -42,6 +42,8 @@ def get_bitcoin_data(limit):
         return df
     return None
 
+
+
 def get_bitcoin_returns(analysis_date):
     # Converter a data de análise para o formato necessário
     analysis_date_str = analysis_date.strftime("%d-%m-%Y")
@@ -78,69 +80,115 @@ def get_bitcoin_returns(analysis_date):
     
     # Se algo der errado, retornar um DataFrame vazio
     return pd.DataFrame(columns=['date', 'price', 'daily_return', 'cumulative_return'])
-
-def get_operation_data():
-    connection = connect_to_db()
+    
+def get_operation_data(connection):
     query = """
     SELECT 
         prediction_date,
-        risk_return
+        actual_date,
+        btc_open,
+        btc_high,
+        btc_low,
+        btc_close,
+        stop_loss,
+        take_profit,
+        recommendation
     FROM 
         chatbot_data
     WHERE 
         actual_date IS NOT NULL
-        AND risk_return IS NOT NULL
-        AND TRIM(risk_return) != ''
+        AND stop_loss IS NOT NULL
+        AND take_profit IS NOT NULL
+        AND recommendation IS NOT NULL
     ORDER BY 
         prediction_date
     """
     df = pd.read_sql_query(query, connection)
-    connection.close()
     
-    def process_risk_return(value):
-        value = str(value).strip()
-        if ':' in value:
-            parts = value.split(':')
-            if len(parts) == 2:
-                try:
-                    return float(parts[1].replace(',', '.')) / float(parts[0].replace(',', '.'))
-                except ValueError:
-                    return np.nan
-        else:
-            try:
-                return float(value.replace(',', '.'))
-            except ValueError:
-                return np.nan
+    # Convert date columns to datetime
+    df['prediction_date'] = pd.to_datetime(df['prediction_date'])
+    df['actual_date'] = pd.to_datetime(df['actual_date'])
     
-    df['avg_risk_return'] = df['risk_return'].apply(process_risk_return)
-    df = df.groupby('prediction_date')['avg_risk_return'].mean().reset_index()
+    # Calculate returns
+    df['return'] = 0.0
+    for i in df.index:
+        if df.loc[i, 'recommendation'] == 'Compra':
+            if df.loc[i, 'btc_high'] >= df.loc[i, 'take_profit']:
+                df.loc[i, 'return'] = (df.loc[i, 'take_profit'] - df.loc[i, 'btc_open']) / df.loc[i, 'btc_open']
+            elif df.loc[i, 'btc_low'] <= df.loc[i, 'stop_loss']:
+                df.loc[i, 'return'] = (df.loc[i, 'stop_loss'] - df.loc[i, 'btc_open']) / df.loc[i, 'btc_open']
+            else:
+                df.loc[i, 'return'] = (df.loc[i, 'btc_close'] - df.loc[i, 'btc_open']) / df.loc[i, 'btc_open']
+        elif df.loc[i, 'recommendation'] == 'Venda':
+            if df.loc[i, 'btc_low'] <= df.loc[i, 'take_profit']:
+                df.loc[i, 'return'] = (df.loc[i, 'btc_open'] - df.loc[i, 'take_profit']) / df.loc[i, 'btc_open']
+            elif df.loc[i, 'btc_high'] >= df.loc[i, 'stop_loss']:
+                df.loc[i, 'return'] = (df.loc[i, 'btc_open'] - df.loc[i, 'stop_loss']) / df.loc[i, 'btc_open']
+            else:
+                df.loc[i, 'return'] = (df.loc[i, 'btc_open'] - df.loc[i, 'btc_close']) / df.loc[i, 'btc_open']
     
-    if not df.empty:
-        df['cumulative_return'] = (1 + df['avg_risk_return']).cumprod() - 1
-    
+    df['cumulative_return'] = (1 + df['return']).cumprod() - 1
     return df
 
-def get_bitcoin_returns():
-    connection = connect_to_db()
+def get_bitcoin_returns(connection):
     query = """
     SELECT 
         DATE(datetime) as date,
-        value_btc
+        btc_open,
+        btc_close
     FROM 
         chatbot_data
     WHERE
-        value_btc IS NOT NULL
+        btc_open IS NOT NULL AND btc_close IS NOT NULL
     ORDER BY 
         datetime
     """
     df = pd.read_sql_query(query, connection)
-    connection.close()
+    df['date'] = pd.to_datetime(df['date'])
     
-    df['return'] = df['value_btc'].pct_change()
-    df = df.groupby('date')['return'].mean().reset_index()
+    df['return'] = (df['btc_close'] - df['btc_open']) / df['btc_open']
     df['cumulative_return'] = (1 + df['return']).cumprod() - 1
-    
     return df
+
+def display_comparison_graph(operation_data, btc_returns):
+    st.header("Comparação de Rentabilidade")
+    
+    fig = go.Figure()
+
+    if not operation_data.empty:
+        fig.add_trace(go.Scatter(
+            x=operation_data['prediction_date'], 
+            y=operation_data['cumulative_return'] * 100, 
+            mode='markers+lines', 
+            name='Rentabilidade das Operações'
+        ))
+
+    if not btc_returns.empty:
+        fig.add_trace(go.Scatter(
+            x=btc_returns['date'], 
+            y=btc_returns['cumulative_return'] * 100, 
+            mode='markers+lines', 
+            name='Rentabilidade do Bitcoin'
+        ))
+
+    fig.update_layout(
+        title='Comparação de Rentabilidade: Operações vs Bitcoin',
+        xaxis_title='Data',
+        yaxis_title='Retorno Cumulativo (%)',
+        showlegend=True
+    )
+
+    y_min = min(operation_data['cumulative_return'].min() if not operation_data.empty else 0,
+                btc_returns['cumulative_return'].min() if not btc_returns.empty else 0) * 100
+    y_max = max(operation_data['cumulative_return'].max() if not operation_data.empty else 0,
+                btc_returns['cumulative_return'].max() if not btc_returns.empty else 0) * 100
+    y_range = y_max - y_min
+    fig.update_yaxes(range=[y_min - 0.1 * y_range, y_max + 0.1 * y_range])
+
+    st.plotly_chart(fig)
+
+    st.write(f"Número de registros de operações: {len(operation_data)}")
+    st.write(f"Número de registros de retornos do Bitcoin: {len(btc_returns)}")
 
 def get_gpt_analysis():
     connection = connect_to_db()
@@ -180,30 +228,73 @@ def get_gpt_analysis():
     else:
         return None
 
-def display_bitcoin_data(data):
-    if data is not None and not data.empty:
+def display_bitcoin_data():
+    # Fetch Bitcoin data from CoinGecko API
+    url = "https://api.coingecko.com/api/v3/coins/bitcoin"
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        
+        # Extract relevant information
+        current_price = data['market_data']['current_price']['usd']
+        market_cap = data['market_data']['market_cap']['usd']
+        total_volume = data['market_data']['total_volume']['usd']
+        price_change_24h = data['market_data']['price_change_percentage_24h']
+        price_change_7d = data['market_data']['price_change_percentage_7d']
+        price_change_30d = data['market_data']['price_change_percentage_30d']
+        
+        # Helper function to create color-coded delta strings with arrows
+        def format_delta(value):
+            color = "green" if value > 0 else "red"
+            arrow = "↑" if value > 0 else "↓"
+            return f"<span style='color: {color};'>{value:.2f}% {arrow}</span>"
+        
+        # Display data
         col1, col2 = st.columns(2)
         
-        latest_price = data['price'].iloc[-1]
-        latest_timestamp = data['timestamp'].iloc[-1]
+        col1.metric(label="Preço Atual", value=f"${current_price:,.2f}", 
+                    delta=price_change_24h,
+                    delta_color="normal")
+        col2.metric(label="Capitalização de Mercado", value=f"${market_cap:,.0f}")
         
-        col1.metric(label="Preço atual", value=f"${latest_price:,}", delta=None)
-        col2.metric(label="Data da última atualização", value=latest_timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+        col1, col2, col3 = st.columns(3)
         
-        if len(data) >= 1:
-            col1, col2, col3 = st.columns(3)
-            
-            var_1d = ((latest_price / data['price'].iloc[-2]) - 1) * 100 if len(data) >= 2 else None
-            var_7d = ((latest_price / data['price'].iloc[0]) - 1) * 100 if len(data) >= 7 else None
-            var_total = ((latest_price / data['price'].iloc[0]) - 1) * 100
-            
-            col1.metric(label="Variação 24h", value=f"{var_1d:.2f}%" if var_1d is not None else "N/A")
-            col2.metric(label="Variação 7 dias", value=f"{var_7d:.2f}%" if var_7d is not None else "N/A")
-            col3.metric(label=f"Variação total ({len(data)} registros)", value=f"{var_total:.2f}%")
+        col1.markdown(f"**Variação 24h**\n{format_delta(price_change_24h)}", unsafe_allow_html=True)
+        col2.markdown(f"**Variação 7d**\n{format_delta(price_change_7d)}", unsafe_allow_html=True)
+        col3.markdown(f"**Variação 30d**\n{format_delta(price_change_30d)}", unsafe_allow_html=True)
+        
+        # Fetch historical data to calculate median volume
+        historical_url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
+        historical_response = requests.get(historical_url)
+        if historical_response.status_code == 200:
+            historical_data = historical_response.json()
+            volumes = [v[1] for v in historical_data['total_volumes']]
+            median_volume = sorted(volumes)[len(volumes)//2]
+        
+            volume_color = "red" if total_volume < median_volume else "green"
+            volume_arrow = "↓" if total_volume < median_volume else "↑"
+        
+            st.markdown("**Volume de Negociação 24h**")
+            st.markdown(f"${total_volume:,.0f}")
+            st.markdown(
+                f"<span style='color: {volume_color};'>Mediana 30d: ${median_volume:,.0f} {volume_arrow}</span>",
+                unsafe_allow_html=True
+            )
         else:
-            st.info("Não há dados históricos suficientes para calcular variações de preço.")
+            st.metric(label="Volume de Negociação 24h", value=f"${total_volume:,.0f}")
+            st.warning("Não foi possível calcular o volume médio.")
+        
+        # Additional data
+        st.subheader("Informações Adicionais")
+        col1, col2 = st.columns(2)
+        col1.write(f"Máxima Histórica: ${data['market_data']['ath']['usd']:,.2f}")
+        
+        # Last updated timestamp
+        last_updated = datetime.fromisoformat(data['last_updated'].replace('Z', '+00:00'))
+        st.write(f"Última Atualização: {last_updated.strftime('%d/%m/%Y %H:%M:%S')} UTC")
     else:
-        st.error("Não foi possível obter dados do Bitcoin.")
+        st.error("Falha ao obter dados do Bitcoin da API CoinGecko.")
 
 def display_next_updates():
     st.header("Próximas Atualizações")
@@ -249,66 +340,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 bitcoin_data = get_bitcoin_data(30)
+
+st.write("## Dados do Bitcoin")
 if bitcoin_data is not None:
-    display_bitcoin_data(bitcoin_data)
+    display_bitcoin_data()
 else:
     st.error("Dados do Bitcoin não disponíveis no momento.")
 
 display_next_updates()
 
-
-def display_comparison_graph(operation_data, btc_returns):
-    st.header("Comparação de Rentabilidade")
-    
-    #st.write("Debug Info:")
-    #st.write(f"Operation Data: {operation_data.to_dict('records')}")
-    #st.write(f"BTC Returns: {btc_returns.to_dict('records')}")
-    
-    fig = go.Figure()
-
-    # Add trace for operation data
-    if not operation_data.empty:
-        fig.add_trace(go.Scatter(
-            x=operation_data['prediction_date'], 
-            y=operation_data['avg_risk_return'], 
-            mode='markers+lines', 
-            name='Rentabilidade das Operações'
-        ))
-
-    # Add trace for Bitcoin returns
-    if not btc_returns.empty:
-        # Remove NaN values
-        btc_returns_clean = btc_returns.dropna()
-        fig.add_trace(go.Scatter(
-            x=btc_returns_clean['date'], 
-            y=btc_returns_clean['cumulative_return'], 
-            mode='markers+lines', 
-            name='Rentabilidade do Bitcoin'
-        ))
-
-    fig.update_layout(
-        title='Comparação de Rentabilidade: Operações vs Bitcoin',
-        xaxis_title='Data',
-        yaxis_title='Retorno Cumulativo',
-        showlegend=True
-    )
-
-    # Adjust y-axis to show both datasets clearly
-    y_min = min(operation_data['avg_risk_return'].min() if not operation_data.empty else 0,
-                btc_returns_clean['cumulative_return'].min() if not btc_returns_clean.empty else 0)
-    y_max = max(operation_data['avg_risk_return'].max() if not operation_data.empty else 0,
-                btc_returns_clean['cumulative_return'].max() if not btc_returns_clean.empty else 0)
-    y_range = y_max - y_min
-    fig.update_yaxes(range=[y_min - 0.1 * y_range, y_max + 0.1 * y_range])
-
-    st.plotly_chart(fig)
-
-    st.write(f"Número de registros de operações: {len(operation_data)}")
-    st.write(f"Número de registros de retornos do Bitcoin: {len(btc_returns)}")
-
-# Usage
-operation_data = get_operation_data()
-btc_returns = get_bitcoin_returns()
+connection = connect_to_db()
+operation_data = get_operation_data(connection)
+btc_returns = get_bitcoin_returns(connection)
+connection.close()
 display_comparison_graph(operation_data, btc_returns)
 
 st.header("Última Análise GPT")
@@ -318,7 +362,7 @@ if gpt_analysis is not None:
     
     col1, col2 = st.columns(2)
     col1.metric("Recomendação", gpt_analysis['recommendation'].strip())
-    col2.metric("Taxa de Confiança", f"{gpt_analysis['trust_rate']:.2f}")
+    col2.metric("Taxa de Confiança", f"{gpt_analysis['trust_rate']:.2f}%")
     
     col3, col4, col5 = st.columns(3)
     col3.metric("Stop Loss", f"{gpt_analysis['stop_loss']:.2f}")
@@ -340,7 +384,3 @@ if st.session_state.update_counter >= 60:
     st.rerun()
 
 st.empty().text(f"Próxima atualização em {60 - st.session_state.update_counter} segundos")
-
-if __name__ == "__main__":
-    conv = Conversation()
-    conv.send()
