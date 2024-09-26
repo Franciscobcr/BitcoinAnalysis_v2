@@ -79,9 +79,11 @@ def get_bitcoin_returns(analysis_date):
     # Se algo der errado, retornar um DataFrame vazio
     return pd.DataFrame(columns=['date', 'price', 'daily_return', 'cumulative_return'])
     
-def get_operation_data(connection):
+def calculate_cumulative_return():
+    connection = connect_to_db()
     query = """
     SELECT 
+        datetime,
         prediction_date,
         actual_date,
         btc_open,
@@ -103,52 +105,140 @@ def get_operation_data(connection):
     """
     df = pd.read_sql_query(query, connection)
     
-    # Convert date columns to datetime
+    df['datetime'] = pd.to_datetime(df['datetime'])
     df['prediction_date'] = pd.to_datetime(df['prediction_date'])
     df['actual_date'] = pd.to_datetime(df['actual_date'])
     
-    # Calculate returns
-    df['return'] = 0.0
-    for i in df.index:
-        if df.loc[i, 'recommendation'] == 'Compra':
-            if df.loc[i, 'btc_high'] >= df.loc[i, 'take_profit']:
-                df.loc[i, 'return'] = (df.loc[i, 'take_profit'] - df.loc[i, 'btc_open']) / df.loc[i, 'btc_open']
-            elif df.loc[i, 'btc_low'] <= df.loc[i, 'stop_loss']:
-                df.loc[i, 'return'] = (df.loc[i, 'stop_loss'] - df.loc[i, 'btc_open']) / df.loc[i, 'btc_open']
-            else:
-                df.loc[i, 'return'] = (df.loc[i, 'btc_close'] - df.loc[i, 'btc_open']) / df.loc[i, 'btc_open']
-        elif df.loc[i, 'recommendation'] == 'Venda':
-            if df.loc[i, 'btc_low'] <= df.loc[i, 'take_profit']:
-                df.loc[i, 'return'] = (df.loc[i, 'btc_open'] - df.loc[i, 'take_profit']) / df.loc[i, 'btc_open']
-            elif df.loc[i, 'btc_high'] >= df.loc[i, 'stop_loss']:
-                df.loc[i, 'return'] = (df.loc[i, 'btc_open'] - df.loc[i, 'stop_loss']) / df.loc[i, 'btc_open']
-            else:
-                df.loc[i, 'return'] = (df.loc[i, 'btc_open'] - df.loc[i, 'btc_close']) / df.loc[i, 'btc_open']
+    df = df.sort_values('datetime')
     
-    df['cumulative_return'] = (1 + df['return']).cumprod() - 1
-    return df
+    # Initialize variables
+    cumulative_return = 0
+    current_position = None
+    entry_price = None
+    results = []
 
-def get_bitcoin_returns(connection):
+    for i, row in df.iterrows():
+        date = row['prediction_date']
+        recommendation = row['recommendation']
+        btc_open = row['btc_open']
+        btc_high = row['btc_high']
+        btc_low = row['btc_low']
+        btc_close = row['btc_close']
+        stop_loss = row['stop_loss']
+        take_profit = row['take_profit']
+
+        if current_position:
+            if current_position == 'Buy':
+                if btc_low <= stop_loss:
+                    return_pct = (stop_loss - entry_price) / entry_price
+                    cumulative_return += return_pct
+                    current_position = None
+                elif btc_high >= take_profit:
+                    return_pct = (take_profit - entry_price) / entry_price
+                    cumulative_return += return_pct
+                    current_position = None
+                else:
+                    return_pct = (btc_close - entry_price) / entry_price
+                    cumulative_return += return_pct
+            elif current_position == 'Sell':
+                if btc_high >= stop_loss:
+                    return_pct = (entry_price - stop_loss) / entry_price
+                    cumulative_return += return_pct
+                    current_position = None
+                elif btc_low <= take_profit:
+                    return_pct = (entry_price - take_profit) / entry_price
+                    cumulative_return += return_pct
+                    current_position = None
+                else:
+                    return_pct = (entry_price - btc_close) / entry_price
+                    cumulative_return += return_pct
+
+        # Open new position
+        if recommendation == 'Compra' and not current_position:
+            current_position = 'Buy'
+            entry_price = btc_open
+        elif recommendation == 'Venda' and not current_position:
+            current_position = 'Sell'
+            entry_price = btc_open
+
+        results.append({
+            'date': date,
+            'cumulative_return': cumulative_return
+        })
+
+    return results
+
+def calculate_btc_cumulative_return():
+    connection = connect_to_db()
     query = """
-    SELECT 
-        DATE(datetime) as date,
-        btc_open,
-        btc_close
-    FROM 
-        chatbot_data
-    WHERE
-        btc_open IS NOT NULL AND btc_close IS NOT NULL
-    ORDER BY 
-        datetime
+    SELECT MIN(prediction_date) as start_date, MAX(prediction_date) as end_date
+    FROM chatbot_data
+    WHERE actual_date IS NOT NULL
     """
-    df = pd.read_sql_query(query, connection)
-    df['date'] = pd.to_datetime(df['date'])
-    
-    df['return'] = (df['btc_close'] - df['btc_open']) / df['btc_open']
-    df['cumulative_return'] = (1 + df['return']).cumprod() - 1
-    return df
+    date_range = pd.read_sql_query(query, connection)
+    start_date = date_range['start_date'].iloc[0]
+    end_date = date_range['end_date'].iloc[0]
 
-def display_comparison_graph(operation_data, btc_returns):
+    # Convert date to datetime at midnight UTC
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.min.time()) + timedelta(days=1)
+
+    # Convert datetimes to Unix timestamps
+    start_timestamp = int(start_datetime.timestamp())
+    end_timestamp = int(end_datetime.timestamp())
+
+    # CoinGecko API request for the entire date range
+    url = f"https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=usd&from={start_timestamp}&to={end_timestamp}"
+    response = requests.get(url)
+    data = response.json()
+
+    if 'prices' in data:
+        prices_df = pd.DataFrame(data['prices'], columns=['timestamp', 'price'])
+        prices_df['date'] = pd.to_datetime(prices_df['timestamp'], unit='ms').dt.date
+        
+        # Group by date and take the last price of each day
+        daily_prices = prices_df.groupby('date')['price'].last().reset_index()
+        
+        cumulative_return = 0
+        results = []
+        previous_price = daily_prices['price'].iloc[0]
+
+        for _, row in daily_prices.iterrows():
+            date = row['date']
+            price = row['price']
+            
+            daily_return = (price - previous_price) / previous_price
+            cumulative_return += daily_return
+
+            results.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'cumulative_return': cumulative_return
+            })
+
+            previous_price = price
+
+        return results
+    else:
+        print("Error fetching data from CoinGecko API")
+        return []
+
+def prepare_data_for_graph(ai_returns, btc_returns):
+    ai_df = pd.DataFrame(ai_returns)
+    ai_df['date'] = pd.to_datetime(ai_df['date'])
+    ai_df = ai_df.rename(columns={'date': 'prediction_date'})
+
+    btc_df = pd.DataFrame(btc_returns)
+    btc_df['date'] = pd.to_datetime(btc_df['date'])
+
+    # Ensure btc_df only includes dates up to the last AI prediction date
+    last_ai_date = ai_df['prediction_date'].max()
+    btc_df = btc_df[btc_df['date'] <= last_ai_date]
+
+    return ai_df, btc_df
+
+def display_comparison_graph(ai_returns, btc_returns):
+    operation_data, btc_data = prepare_data_for_graph(ai_returns, btc_returns)
+
     st.header("Comparação de Rentabilidade")
     
     fig = go.Figure()
@@ -161,10 +251,10 @@ def display_comparison_graph(operation_data, btc_returns):
             name='Rentabilidade das Operações'
         ))
 
-    if not btc_returns.empty:
+    if not btc_data.empty:
         fig.add_trace(go.Scatter(
-            x=btc_returns['date'], 
-            y=btc_returns['cumulative_return'] * 100, 
+            x=btc_data['date'], 
+            y=btc_data['cumulative_return'] * 100, 
             mode='markers+lines', 
             name='Rentabilidade do Bitcoin'
         ))
@@ -177,16 +267,16 @@ def display_comparison_graph(operation_data, btc_returns):
     )
 
     y_min = min(operation_data['cumulative_return'].min() if not operation_data.empty else 0,
-                btc_returns['cumulative_return'].min() if not btc_returns.empty else 0) * 100
+                btc_data['cumulative_return'].min() if not btc_data.empty else 0) * 100
     y_max = max(operation_data['cumulative_return'].max() if not operation_data.empty else 0,
-                btc_returns['cumulative_return'].max() if not btc_returns.empty else 0) * 100
+                btc_data['cumulative_return'].max() if not btc_data.empty else 0) * 100
     y_range = y_max - y_min
     fig.update_yaxes(range=[y_min - 0.1 * y_range, y_max + 0.1 * y_range])
 
     st.plotly_chart(fig)
 
     st.write(f"Número de registros de operações: {len(operation_data)}")
-    st.write(f"Número de registros de retornos do Bitcoin: {len(btc_returns)}")
+    st.write(f"Número de registros de retornos do Bitcoin: {len(btc_data)}")
 
 def get_gpt_analysis():
     connection = connect_to_db()
@@ -347,11 +437,9 @@ else:
 
 display_next_updates()
 
-connection = connect_to_db()
-operation_data = get_operation_data(connection)
-btc_returns = get_bitcoin_returns(connection)
-connection.close()
-display_comparison_graph(operation_data, btc_returns)
+ai_returns = calculate_cumulative_return()
+btc_returns = calculate_btc_cumulative_return()
+display_comparison_graph(ai_returns, btc_returns)
 
 st.header("Última Análise GPT")
 gpt_analysis = get_gpt_analysis()
