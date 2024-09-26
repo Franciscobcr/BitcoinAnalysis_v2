@@ -13,7 +13,6 @@ import logging
 import numpy as np
 import requests
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 # Configurações da página
@@ -41,7 +40,6 @@ def get_bitcoin_data(limit):
     if not df.empty:
         return df
     return None
-
 
 
 def get_bitcoin_returns(analysis_date):
