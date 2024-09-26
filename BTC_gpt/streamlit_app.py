@@ -233,9 +233,6 @@ def display_comparison_graph(ai_returns, btc_returns):
 
     st.plotly_chart(fig)
 
-    st.write(f"Número de registros de operações: {len(operation_data)}")
-    st.write(f"Número de registros de retornos do Bitcoin: {len(btc_data)}")
-
 def get_gpt_analysis():
     connection = connect_to_db()
     query = """
