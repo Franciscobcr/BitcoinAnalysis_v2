@@ -59,7 +59,7 @@ class prompts:
 
         9. Gestão de Risco: Forneça valores específicos para Take Profit (TP) e Stop Loss (SL).
 
-        10. Relação Risco/Recompensa: Calcule e apresente a relação risco/recompensa para a operação sugerida.
+        10. Relação Risco/Recompensa: Calcule e apresente a relação risco/recompensa para a operação sugerida (ex: 1:3).
 
         11. Pontos de Atenção: Liste eventos ou níveis de preço cruciais a serem monitorados nas próximas 24 horas.
 

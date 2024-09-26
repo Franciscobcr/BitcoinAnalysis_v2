@@ -2,7 +2,7 @@ import schedule
 import time
 import pytz
 from datetime import datetime, timedelta
-from chatbot2 import Conversation
+from chatbot_v3 import Conversation
 from database_setting import insert_actual_bitcoin_data, connect_to_db
 from exec_script import get_bitcoin_price_and_variation
 import pandas as pd

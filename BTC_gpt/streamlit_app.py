@@ -410,6 +410,9 @@ if gpt_analysis is not None:
     col4.metric("Take Profit", f"{gpt_analysis['take_profit']:.2f}")
     col5.metric("Retorno de Risco", gpt_analysis['risk_return'])  # Exibindo como string
     
+    response_content = gpt_analysis['response']
+
+    st.chat_message("ai").write(response_content)
     # Explicação adicional do Retorno de Risco
     risk_return_parts = gpt_analysis['risk_return'].split(':')
 else:
