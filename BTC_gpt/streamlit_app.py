@@ -83,88 +83,43 @@ def calculate_cumulative_return():
     connection = connect_to_db()
     query = """
     SELECT 
-        datetime,
         prediction_date,
-        actual_date,
         btc_open,
-        btc_high,
-        btc_low,
         btc_close,
-        stop_loss,
-        take_profit,
         recommendation
     FROM 
         chatbot_data
     WHERE 
         actual_date IS NOT NULL
-        AND stop_loss IS NOT NULL
-        AND take_profit IS NOT NULL
-        AND recommendation IS NOT NULL
     ORDER BY 
         prediction_date
     """
     df = pd.read_sql_query(query, connection)
     
-    df['datetime'] = pd.to_datetime(df['datetime'])
     df['prediction_date'] = pd.to_datetime(df['prediction_date'])
-    df['actual_date'] = pd.to_datetime(df['actual_date'])
+    df = df.sort_values('prediction_date')
     
-    df = df.sort_values('datetime')
-    
-    # Initialize variables
     cumulative_return = 0
-    current_position = None
-    entry_price = None
     results = []
+    previous_close = df['btc_open'].iloc[0]  # Use the first open price as the starting point
 
-    for i, row in df.iterrows():
+    for _, row in df.iterrows():
         date = row['prediction_date']
+        close = row['btc_close']
         recommendation = row['recommendation']
-        btc_open = row['btc_open']
-        btc_high = row['btc_high']
-        btc_low = row['btc_low']
-        btc_close = row['btc_close']
-        stop_loss = row['stop_loss']
-        take_profit = row['take_profit']
 
-        if current_position:
-            if current_position == 'Buy':
-                if btc_low <= stop_loss:
-                    return_pct = (stop_loss - entry_price) / entry_price
-                    cumulative_return += return_pct
-                    current_position = None
-                elif btc_high >= take_profit:
-                    return_pct = (take_profit - entry_price) / entry_price
-                    cumulative_return += return_pct
-                    current_position = None
-                else:
-                    return_pct = (btc_close - entry_price) / entry_price
-                    cumulative_return += return_pct
-            elif current_position == 'Sell':
-                if btc_high >= stop_loss:
-                    return_pct = (entry_price - stop_loss) / entry_price
-                    cumulative_return += return_pct
-                    current_position = None
-                elif btc_low <= take_profit:
-                    return_pct = (entry_price - take_profit) / entry_price
-                    cumulative_return += return_pct
-                    current_position = None
-                else:
-                    return_pct = (entry_price - btc_close) / entry_price
-                    cumulative_return += return_pct
-
-        # Open new position
-        if recommendation == 'Compra' and not current_position:
-            current_position = 'Buy'
-            entry_price = btc_open
-        elif recommendation == 'Venda' and not current_position:
-            current_position = 'Sell'
-            entry_price = btc_open
+        if recommendation.lower() != 'aguardar':
+            daily_return = (close - previous_close) / previous_close
+            cumulative_return += daily_return
+        else:
+            daily_return = 0  # No change in return for 'Aguardar'
 
         results.append({
-            'date': date,
+            'date': date.strftime('%Y-%m-%d'),
             'cumulative_return': cumulative_return
         })
+
+        previous_close = close
 
     return results
 
@@ -230,9 +185,12 @@ def prepare_data_for_graph(ai_returns, btc_returns):
     btc_df = pd.DataFrame(btc_returns)
     btc_df['date'] = pd.to_datetime(btc_df['date'])
 
-    # Ensure btc_df only includes dates up to the last AI prediction date
-    last_ai_date = ai_df['prediction_date'].max()
-    btc_df = btc_df[btc_df['date'] <= last_ai_date]
+    # Ensure both dataframes cover the same date range
+    start_date = max(ai_df['prediction_date'].min(), btc_df['date'].min())
+    end_date = min(ai_df['prediction_date'].max(), btc_df['date'].max())
+
+    ai_df = ai_df[(ai_df['prediction_date'] >= start_date) & (ai_df['prediction_date'] <= end_date)]
+    btc_df = btc_df[(btc_df['date'] >= start_date) & (btc_df['date'] <= end_date)]
 
     return ai_df, btc_df
 
