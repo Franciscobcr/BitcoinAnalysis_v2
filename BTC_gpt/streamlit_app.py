@@ -238,6 +238,7 @@ def get_gpt_analysis():
     query = """
     SELECT 
         datetime,
+        response,
         recommendation,
         trust_rate,
         stop_loss,
